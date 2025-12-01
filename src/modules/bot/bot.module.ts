@@ -6,6 +6,8 @@ import { BotService } from './bot.service';
 import { SteamModule } from '../steam/steam.module';
 import { telegramConfig } from '../../configuration';
 import { SalesMessageBuilder } from './sales-message.builder';
+import { UsersModule } from '../users/users.module';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 @Module({
   imports: [
@@ -17,6 +19,8 @@ import { SalesMessageBuilder } from './sales-message.builder';
       }),
     }),
     SteamModule,
+    UsersModule,
+    SubscriptionsModule,
   ],
   providers: [BotUpdate, BotService, SalesMessageBuilder],
 })

@@ -57,6 +57,26 @@ $ npm run test:e2e
 $ npm run test:cov
 ```
 
+## Docker
+
+```bash
+# 1) Create an env file (e.g. .env.local) with TELEGRAM_BOT_TOKEN, STEAM_API_URL, and DB_URL
+#    DB_URL is required for validation even when Compose overrides it
+
+# 2) Build the image
+docker build -t sales-assistant .
+
+# 3) Run with your env file (DB_URL should point at your target DB)
+docker run --env-file ./.env.local -p 3000:3000 sales-assistant
+```
+
+For local development with Postgres:
+
+```bash
+# DB connection defaults to the db service in docker-compose.yml
+docker compose up --build
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
