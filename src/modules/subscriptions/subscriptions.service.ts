@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { SubscriptionEntity, SubscriptionStatus, SubscriptionType } from './entities/subscription.entity';
-import { UserEntity } from '../users/entities/user.entity';
+import { UserEntity, UserStatus } from '../users/entities/user.entity';
 
 @Injectable()
 export class SubscriptionsService {
@@ -43,6 +43,17 @@ export class SubscriptionsService {
   async findActiveByUser(userId: string): Promise<SubscriptionEntity[]> {
     return this.repository.find({
       where: { user: { id: userId }, status: SubscriptionStatus.ACTIVE },
+      relations: ['user'],
+    });
+  }
+
+  async findActiveByType(type: SubscriptionType): Promise<SubscriptionEntity[]> {
+    return this.repository.find({
+      where: {
+        type,
+        status: SubscriptionStatus.ACTIVE,
+        user: { status: UserStatus.ACTIVE },
+      },
       relations: ['user'],
     });
   }

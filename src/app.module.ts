@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -33,6 +34,7 @@ import { dataSourceOptions } from '../data-source.js';
       ...dataSourceOptions,
       migrationsRun: false,
     }),
+    ScheduleModule.forRoot(),
     BotModule,
     SteamModule,
     UsersModule,

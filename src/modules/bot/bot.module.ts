@@ -8,6 +8,7 @@ import { telegramConfig } from '../../configuration';
 import { SalesMessageBuilder } from './sales-message.builder';
 import { UsersModule } from '../users/users.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { SalesDigestJob } from './sales-digest.job';
 
 @Module({
   imports: [
@@ -22,6 +23,6 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     UsersModule,
     SubscriptionsModule,
   ],
-  providers: [BotUpdate, BotService, SalesMessageBuilder],
+  providers: [BotUpdate, BotService, SalesMessageBuilder, SalesDigestJob],
 })
 export class BotModule {}
