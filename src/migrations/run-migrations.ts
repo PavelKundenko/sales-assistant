@@ -1,4 +1,4 @@
-import dataSource from '../../data-source.js';
+import dataSource from '../../data-source';
 
 async function runMigrations() {
   try {

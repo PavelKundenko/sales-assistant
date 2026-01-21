@@ -19,12 +19,8 @@ import { dataSourceOptions } from '../data-source.js';
       load: [telegramConfig, steamConfig],
       validationSchema: Joi.object({
         TELEGRAM_BOT_TOKEN: Joi.string().min(1).required(),
-        STEAM_API_URL: Joi.string().uri().default('https://store.steampowered.com/api'),
-        DATABASE_HOST: Joi.string().required(),
-        DATABASE_PORT: Joi.number().port().default(5432),
-        DATABASE_USERNAME: Joi.string().required(),
-        DATABASE_PASSWORD: Joi.string().required(),
-        DATABASE_NAME: Joi.string().required(),
+        STEAM_API_URL: Joi.string().uri().required(),
+        DATABASE_URL: Joi.string().uri().required(),
       }),
       validationOptions: {
         abortEarly: false,
