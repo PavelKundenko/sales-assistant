@@ -11,11 +11,15 @@ if (!databaseUrl) {
   throw new Error('Missing DATABASE_URL environment variable');
 }
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+const migrationsPath = isProduction ? 'dist/src/migrations/[0-9]*.js' : 'src/migrations/[0-9]*.ts';
+
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: databaseUrl,
   entities: [UserEntity, SubscriptionEntity],
-  migrations: ['src/migrations/[0-9]*{.ts,.js}'],
+  migrations: [migrationsPath],
   synchronize: false,
   ssl: { rejectUnauthorized: false },
 };

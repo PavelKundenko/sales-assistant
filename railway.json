@@ -4,7 +4,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
-    "startCommand": "npm run start:prod & sleep 5 && npm run migration:run && wait",
+    "startCommand": "NODE_ENV=production npm run migration:run:prod && npm run start:prod",
     "restartPolicyType": "ON_FAILURE"
   }
 }
