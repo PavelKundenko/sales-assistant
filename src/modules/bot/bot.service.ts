@@ -3,7 +3,12 @@ import { Context, Markup } from 'telegraf';
 import { SteamService } from '../steam/steam.service';
 import { SalesMessageBuilder } from './sales-message.builder';
 import { UsersService } from '../users/users.service';
-import { SALES_BUTTON_LABEL, SUBSCRIBE_BUTTON_LABEL, UNSUBSCRIBE_BUTTON_LABEL } from './bot.constants';
+import {
+  SALES_BUTTON_LABEL,
+  START_BUTTON_LABEL,
+  SUBSCRIBE_BUTTON_LABEL,
+  UNSUBSCRIBE_BUTTON_LABEL,
+} from './bot.constants';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { SubscriptionEntity, SubscriptionType } from '../subscriptions/entities/subscription.entity';
 import { UserEntity } from '../users/entities/user.entity';
@@ -19,8 +24,8 @@ export class BotService {
 
   private buildKeyboard(isSubscribed: boolean) {
     const buttons = isSubscribed
-      ? [[SALES_BUTTON_LABEL], [UNSUBSCRIBE_BUTTON_LABEL]]
-      : [[SALES_BUTTON_LABEL], [SUBSCRIBE_BUTTON_LABEL]];
+      ? [[START_BUTTON_LABEL], [SALES_BUTTON_LABEL, UNSUBSCRIBE_BUTTON_LABEL]]
+      : [[START_BUTTON_LABEL], [SALES_BUTTON_LABEL, SUBSCRIBE_BUTTON_LABEL]];
 
     return Markup.keyboard(buttons).resize();
   }
@@ -57,20 +62,20 @@ export class BotService {
     const isSubscribed = activeSubscriptions.some((subscription) => subscription.type === SubscriptionType.STEAM);
 
     const message = created
-      ? 'Welcome! I am your steam sales assistant bot. Use the button below or /sales to get current Steam sales!'
-      : 'Welcome back! I am your steam sales assistant bot. Use the button below or /sales to get current Steam sales!';
+      ? 'Вітаю! Я твій помічник зі знижок у Steam. Використай кнопку нижче або команду /sales, щоб отримати актуальні знижки!'
+      : 'З поверненням! Я твій помічник зі знижок у Steam. Використай кнопку нижче або команду /sales, щоб отримати актуальні знижки!';
 
     await context.reply(message, this.buildKeyboard(isSubscribed));
   }
 
   async handleSalesCommand(context: Context): Promise<void> {
-    await context.reply('Fetching current Steam sales...');
+    await context.reply('Завантажую актуальні знижки в Steam...');
 
     try {
       const sales = await this.steamService.getCurrentSales();
 
       if (sales.length === 0) {
-        await context.reply('No sales found at the moment.');
+        await context.reply('На даний момент знижок не знайдено.');
 
         return;
       }
@@ -79,7 +84,7 @@ export class BotService {
 
       await context.replyWithMediaGroup(mediaGroup);
     } catch {
-      await context.reply('Failed to fetch Steam sales. Please try again later.');
+      await context.reply('Не вдалося завантажити знижки Steam. Будь ласка, спробуйте пізніше.');
     }
   }
 
@@ -87,7 +92,7 @@ export class BotService {
     const { activeSubscription } = await this.getSubscriptionContext(context.from?.id);
 
     await context.reply(
-      'Available commands:\n/start - Start the bot\n/help - Show this help message\n/sales - Get current Steam sales\n\nYou can also tap the button below.',
+      'Доступні команди:\n/start - Запустити бота\n/help - Показати це повідомлення\n/sales - Отримати актуальні знижки\n\nТакож ви можете натиснути кнопку нижче.',
       this.buildKeyboard(Boolean(activeSubscription)),
     );
   }
@@ -99,6 +104,12 @@ export class BotService {
 
     const telegramId = context.from?.id;
 
+    if (context.message.text === START_BUTTON_LABEL) {
+      await this.handleStart(context);
+
+      return;
+    }
+
     if (context.message.text === SALES_BUTTON_LABEL) {
       await this.handleSalesCommand(context);
 
@@ -108,7 +119,7 @@ export class BotService {
     const { user, activeSubscription } = await this.getSubscriptionContext(telegramId);
 
     if (!user) {
-      await context.reply('Please start the bot with /start first.', this.buildKeyboard(false));
+      await context.reply('Будь ласка, спочатку запустіть бота командою /start.', this.buildKeyboard(false));
 
       return;
     }
@@ -118,7 +129,7 @@ export class BotService {
         await this.subscriptionsService.createForUser(user, SubscriptionType.STEAM);
       }
 
-      await context.reply('You are subscribed to Steam sales updates.', this.buildKeyboard(true));
+      await context.reply('Ви підписалися на оновлення знижок Steam.', this.buildKeyboard(true));
 
       return;
     }
@@ -128,13 +139,13 @@ export class BotService {
         await this.subscriptionsService.deactivate(activeSubscription.id);
       }
 
-      await context.reply('You have unsubscribed from Steam sales updates.', this.buildKeyboard(false));
+      await context.reply('Ви відписалися від оновлень знижок Steam.', this.buildKeyboard(false));
 
       return;
     }
 
     await context.reply(
-      'Please tap the Steam Sales button or type /sales.',
+      'Будь ласка, натисніть кнопку "Знижки Steam" або введіть /sales.',
       this.buildKeyboard(Boolean(activeSubscription)),
     );
   }

@@ -13,13 +13,13 @@ export class SalesMessageBuilder {
     }
 
     const topSales = sales.slice(0, limit);
-    const captionLines = ['🔥 Current Steam Sales:\n'];
+    const captionLines = ['🔥 Актуальні знижки у Steam:\n'];
 
     for (const game of topSales) {
-      const name = game.name ?? 'Unknown title';
+      const name = game.name ?? 'Невідома назва';
 
       const discountPercent =
-        game.discountPercent !== undefined && game.discountPercent !== null ? `${game.discountPercent}%` : 'N/A';
+        game.discountPercent !== undefined && game.discountPercent !== null ? `${game.discountPercent}%` : 'Н/Д';
 
       const originalPrice = this.formatPrice(game.originalPrice);
       const finalPrice = this.formatPrice(game.finalPrice);
@@ -28,8 +28,8 @@ export class SalesMessageBuilder {
 
       captionLines.push(
         `<a href="${storeUrl}">${name}</a>`,
-        `💰 ${discountPercent} OFF`,
-        `Price: <s>${originalPrice}</s> ${finalPrice}`,
+        `💰 Знижка ${discountPercent}`,
+        `Ціна: <s>${originalPrice}</s> ${finalPrice}`,
         '',
       );
     }
@@ -53,7 +53,7 @@ export class SalesMessageBuilder {
 
   private formatPrice(price?: number | null): string {
     if (typeof price !== 'number') {
-      return 'N/A';
+      return 'Н/Д';
     }
 
     return `₴${price.toFixed(2)}`;
