@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SteamFeaturedResponse } from './interfaces/steam-game.interface';
+import { SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
 import { SteamSaleDto } from './dto/steam-sale.dto';
 import { SteamGateway } from './steam.gateway';
 
@@ -11,7 +11,7 @@ export class SteamService {
 
   async getCurrentSales(): Promise<SteamSaleDto[]> {
     try {
-      const data = await this.steamGateway.fetchFeatured();
+      const data = await this.steamGateway.fetchFeaturedCategories();
 
       return this.parseFeaturedGames(data);
     } catch (error) {
@@ -20,15 +20,12 @@ export class SteamService {
     }
   }
 
-  private parseFeaturedGames(data: SteamFeaturedResponse): SteamSaleDto[] {
+  private parseFeaturedGames(data: SteamFeaturedCategoriesResponse): SteamSaleDto[] {
     const games: SteamSaleDto[] = [];
 
-    const featuredWin = data.featured_win || [];
-    const largeCapsules = data.large_capsules || [];
+    const specials = data.specials?.items || [];
 
-    const allGames = [...featuredWin, ...largeCapsules];
-
-    for (const game of allGames) {
+    for (const game of specials) {
       if (game.discounted && game.discount_percent > 0) {
         games.push(
           new SteamSaleDto({

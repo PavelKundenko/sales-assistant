@@ -1,10 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { SteamSaleDto } from '../steam/dto/steam-sale.dto';
 
-export interface TelegramSalesMessage {
-  photoUrl: string;
-  caption: string;
-}
+import { InputMediaPhoto } from 'telegraf/types';
+
+export type TelegramSalesMessage = InputMediaPhoto[];
 
 @Injectable()
 export class SalesMessageBuilder {
@@ -35,12 +34,21 @@ export class SalesMessageBuilder {
       );
     }
 
-    const photoUrl = topSales[0].headerImage ?? '';
+    const mediaGroup = topSales.map((game, index) => {
+      const mediaItem: any = {
+        type: 'photo',
+        media: game.headerImage || '',
+      };
 
-    return {
-      photoUrl,
-      caption: captionLines.join('\n').trim(),
-    };
+      if (index === 0) {
+        mediaItem.caption = captionLines.join('\n').trim();
+        mediaItem.parse_mode = 'HTML';
+      }
+
+      return mediaItem;
+    });
+
+    return mediaGroup;
   }
 
   private formatPrice(price?: number | null): string {

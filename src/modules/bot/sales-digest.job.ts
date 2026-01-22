@@ -18,7 +18,7 @@ export class SalesDigestJob {
     @InjectBot() private readonly bot: Telegraf<Context>,
   ) {}
 
-  @Cron(CronExpression.EVERY_DAY_AT_1PM)
+  @Cron(CronExpression.EVERY_DAY_AT_6PM)
   async sendDailySalesDigest(): Promise<void> {
     try {
       const subscriptions = await this.subscriptionsService.findActiveByType(SubscriptionType.STEAM);
@@ -35,16 +35,13 @@ export class SalesDigestJob {
         return;
       }
 
-      const { caption, photoUrl } = this.salesMessageBuilder.buildTopSalesMessage(sales);
+      const mediaGroup = this.salesMessageBuilder.buildTopSalesMessage(sales);
 
       for (const subscription of subscriptions) {
         const telegramId = subscription.user.telegramId;
 
         try {
-          await this.bot.telegram.sendPhoto(telegramId, photoUrl, {
-            caption,
-            parse_mode: 'HTML',
-          });
+          await this.bot.telegram.sendMediaGroup(telegramId, mediaGroup);
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error);
           this.logger.warn(`Failed to send sales digest to user ${telegramId}: ${reason}`);

@@ -75,12 +75,9 @@ export class BotService {
         return;
       }
 
-      const { caption, photoUrl } = this.salesMessageBuilder.buildTopSalesMessage(sales);
+      const mediaGroup = this.salesMessageBuilder.buildTopSalesMessage(sales);
 
-      await context.replyWithPhoto(photoUrl, {
-        caption,
-        parse_mode: 'HTML',
-      });
+      await context.replyWithMediaGroup(mediaGroup);
     } catch {
       await context.reply('Failed to fetch Steam sales. Please try again later.');
     }

@@ -3,7 +3,7 @@ import { HttpService } from '@nestjs/axios';
 import type { ConfigType } from '@nestjs/config';
 import { lastValueFrom } from 'rxjs';
 import { steamConfig } from '../../configuration';
-import { SteamFeaturedResponse } from './interfaces/steam-game.interface';
+import { SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
 
 @Injectable()
 export class SteamGateway {
@@ -13,13 +13,16 @@ export class SteamGateway {
     private readonly config: ConfigType<typeof steamConfig>,
   ) {}
 
-  async fetchFeatured(): Promise<SteamFeaturedResponse> {
+  async fetchFeaturedCategories(): Promise<SteamFeaturedCategoriesResponse> {
     try {
-      const observable = this.httpService.get<SteamFeaturedResponse>(`${this.config.apiUrl}/featured/`);
+      const featuredCategoriesObservable = this.httpService.get<SteamFeaturedCategoriesResponse>(
+        `${this.config.apiUrl}/featuredcategories`,
+        { params: { cc: 'UA' } },
+      );
 
-      const response = await lastValueFrom(observable);
+      const featuredCategoriesResponse = await lastValueFrom(featuredCategoriesObservable);
 
-      return response.data;
+      return featuredCategoriesResponse.data;
     } catch (error) {
       throw new Error('Failed to fetch Steam sales', { cause: error });
     }

@@ -2,7 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { SteamService } from './steam.service';
 import { SteamGateway } from './steam.gateway';
-import { SteamFeaturedResponse } from './interfaces/steam-game.interface';
+import { SteamFeaturedCategoriesResponse, SteamFeaturedItem } from './interfaces/steam-game.interface';
+
+const mockGame = (overrides: Partial<SteamFeaturedItem> = {}): SteamFeaturedItem => ({
+  id: 1,
+  type: 0,
+  name: 'Test Game',
+  discounted: true,
+  discount_percent: 50,
+  original_price: 2000,
+  final_price: 1000,
+  currency: 'USD',
+  large_capsule_image: 'large.jpg',
+  small_capsule_image: 'small.jpg',
+  windows_available: true,
+  mac_available: true,
+  linux_available: true,
+  streamingvideo_available: true,
+  header_image: 'test.jpg',
+  ...overrides,
+});
 
 describe('SteamService', () => {
   let service: SteamService;
@@ -16,7 +35,7 @@ describe('SteamService', () => {
         {
           provide: SteamGateway,
           useValue: {
-            fetchFeatured: jest.fn(),
+            fetchFeaturedCategories: jest.fn(),
           },
         },
       ],
@@ -32,32 +51,31 @@ describe('SteamService', () => {
   });
 
   it('returns sales sorted by absolute discount amount', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Game A',
-          discounted: true,
-          discount_percent: 10,
-          original_price: 3000,
-          final_price: 2000,
-          header_image: 'image-a',
-        },
-      ],
-      large_capsules: [
-        {
-          id: 2,
-          name: 'Game B',
-          discounted: true,
-          discount_percent: 5,
-          original_price: 5000,
-          final_price: 2000,
-          header_image: 'image-b',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Game A',
+            discount_percent: 10,
+            original_price: 3000,
+            final_price: 2000,
+          }),
+          mockGame({
+            id: 2,
+            name: 'Game B',
+            discount_percent: 5,
+            original_price: 5000,
+            final_price: 2000,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -73,30 +91,33 @@ describe('SteamService', () => {
   });
 
   it('filters out non-discounted games', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Discounted Game',
-          discounted: true,
-          discount_percent: 50,
-          original_price: 2000,
-          final_price: 1000,
-          header_image: 'image-1',
-        },
-        {
-          id: 2,
-          name: 'Full Price Game',
-          discounted: false,
-          discount_percent: 0,
-          original_price: 3000,
-          final_price: 3000,
-          header_image: 'image-2',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Discounted Game',
+            discounted: true,
+            discount_percent: 50,
+            original_price: 2000,
+            final_price: 1000,
+          }),
+          mockGame({
+            id: 2,
+            name: 'Full Price Game',
+            discounted: false,
+            discount_percent: 0,
+            original_price: 3000,
+            final_price: 3000,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -105,21 +126,25 @@ describe('SteamService', () => {
   });
 
   it('filters out games with zero discount percentage', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Game with zero discount',
-          discounted: true,
-          discount_percent: 0,
-          original_price: 2000,
-          final_price: 2000,
-          header_image: 'image-1',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Game with zero discount',
+            discounted: true,
+            discount_percent: 0,
+            original_price: 2000,
+            final_price: 2000,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -127,20 +152,25 @@ describe('SteamService', () => {
   });
 
   it('handles games without original_price', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Game without original price',
-          discounted: true,
-          discount_percent: 10,
-          final_price: 1000,
-          header_image: 'image-1',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Game without original price',
+            discounted: true,
+            discount_percent: 10,
+            original_price: null,
+            final_price: 1000,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -150,42 +180,39 @@ describe('SteamService', () => {
   });
 
   it('handles empty response', async () => {
-    const response: SteamFeaturedResponse = {};
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+    };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
     expect(sales).toHaveLength(0);
   });
 
-  it('combines featured_win and large_capsules arrays', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Featured Game',
-          discounted: true,
-          discount_percent: 10,
-          original_price: 2000,
-          final_price: 1800,
-          header_image: 'image-1',
-        },
-      ],
-      large_capsules: [
-        {
-          id: 2,
-          name: 'Capsule Game',
-          discounted: true,
-          discount_percent: 20,
-          original_price: 3000,
-          final_price: 2400,
-          header_image: 'image-2',
-        },
-      ],
+  it('parses items from specials', async () => {
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Featured Game',
+            discount_percent: 10,
+          }),
+          mockGame({
+            id: 2,
+            name: 'Capsule Game',
+            discount_percent: 20,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -195,21 +222,22 @@ describe('SteamService', () => {
   });
 
   it('converts prices from cents to dollars', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 1,
-          name: 'Game',
-          discounted: true,
-          discount_percent: 50,
-          original_price: 5999,
-          final_price: 2999,
-          header_image: 'image-1',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            original_price: 5999,
+            final_price: 2999,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -218,21 +246,20 @@ describe('SteamService', () => {
   });
 
   it('includes store URL for each game', async () => {
-    const response: SteamFeaturedResponse = {
-      featured_win: [
-        {
-          id: 123456,
-          name: 'Test Game',
-          discounted: true,
-          discount_percent: 25,
-          original_price: 4000,
-          final_price: 3000,
-          header_image: 'image-1',
-        },
-      ],
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 123456,
+          }),
+        ],
+      },
     };
 
-    gateway.fetchFeatured.mockResolvedValue(response);
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
 
     const sales = await service.getCurrentSales();
 
@@ -241,7 +268,7 @@ describe('SteamService', () => {
 
   it('logs error and re-throws when gateway fails', async () => {
     const error = new Error('network down');
-    gateway.fetchFeatured.mockRejectedValue(error);
+    gateway.fetchFeaturedCategories.mockRejectedValue(error);
 
     await expect(service.getCurrentSales()).rejects.toThrow('network down');
     expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to fetch Steam sales', error);
