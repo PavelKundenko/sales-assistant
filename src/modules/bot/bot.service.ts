@@ -129,7 +129,10 @@ export class BotService {
         await this.subscriptionsService.createForUser(user, SubscriptionType.STEAM);
       }
 
-      await context.reply('Ви підписалися на оновлення знижок Steam.', this.buildKeyboard(true));
+      await context.reply(
+        'Ви підписалися на оновлення знижок Steam, я буду сповіщати вас про нові знижки кожного дня.',
+        this.buildKeyboard(true),
+      );
 
       return;
     }
