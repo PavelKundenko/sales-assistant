@@ -5,6 +5,11 @@ export enum UserStatus {
   INACTIVE = 'INACTIVE',
 }
 
+export enum UserRole {
+  ADMIN = 'ADMIN',
+  USER = 'USER',
+}
+
 @Entity('users')
 @Unique(['telegramId'])
 export class UserEntity {
@@ -20,6 +25,13 @@ export class UserEntity {
     default: UserStatus.ACTIVE,
   })
   status!: UserStatus;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role!: UserRole;
 
   @Column({ name: 'deactivated_at', type: 'timestamp', nullable: true })
   deactivatedAt?: Date | null;

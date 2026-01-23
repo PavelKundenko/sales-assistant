@@ -1,11 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { InjectBot } from 'nestjs-telegraf';
-import { Context, Telegraf } from 'telegraf';
 import { SteamService } from '../steam/steam.service';
 import { SalesMessageBuilder } from './sales-message.builder';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { SubscriptionType } from '../subscriptions/entities/subscription.entity';
+import { BOT_MESSENGER, type BotMessenger } from './bot.types';
 
 @Injectable()
 export class SalesDigestJob {
@@ -15,7 +14,8 @@ export class SalesDigestJob {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly steamService: SteamService,
     private readonly salesMessageBuilder: SalesMessageBuilder,
-    @InjectBot() private readonly bot: Telegraf<Context>,
+    @Inject(BOT_MESSENGER)
+    private readonly messenger: BotMessenger,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_6PM)
@@ -41,7 +41,7 @@ export class SalesDigestJob {
         const telegramId = subscription.user.telegramId;
 
         try {
-          await this.bot.telegram.sendMediaGroup(telegramId, mediaGroup);
+          await this.messenger.sendMediaGroup(telegramId, mediaGroup);
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error);
           this.logger.warn(`Failed to send sales digest to user ${telegramId}: ${reason}`);

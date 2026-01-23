@@ -9,6 +9,9 @@ import { SalesMessageBuilder } from './sales-message.builder';
 import { UsersModule } from '../users/users.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { SalesDigestJob } from './sales-digest.job';
+import { BOT_MESSENGER } from './bot.types';
+import { TelegramBotMessenger } from './telegram-bot.messenger';
+import { KeyboardBuilder } from './keyboard.builder';
 
 @Module({
   imports: [
@@ -23,6 +26,13 @@ import { SalesDigestJob } from './sales-digest.job';
     UsersModule,
     SubscriptionsModule,
   ],
-  providers: [BotUpdate, BotService, SalesMessageBuilder, SalesDigestJob],
+  providers: [
+    BotUpdate,
+    BotService,
+    SalesMessageBuilder,
+    SalesDigestJob,
+    KeyboardBuilder,
+    { provide: BOT_MESSENGER, useClass: TelegramBotMessenger },
+  ],
 })
 export class BotModule {}
