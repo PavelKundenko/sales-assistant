@@ -45,4 +45,8 @@ export class UsersService {
   async removeByTelegramId(telegramId: string): Promise<void> {
     await this.repository.update({ telegramId }, { status: UserStatus.INACTIVE, deactivatedAt: new Date() });
   }
+
+  async setSteamId(userId: string, steamId: string): Promise<void> {
+    await this.repository.update({ id: userId }, { steamId });
+  }
 }

@@ -4,10 +4,13 @@ export type BotKeyboard = string[][];
 
 export interface BotMessageOptions {
   keyboard?: BotKeyboard;
+  parseMode?: 'HTML';
+  disableWebPagePreview?: boolean;
 }
 
 export type BuildKeyboardParams = {
   isSubscribed: boolean;
+  hasSteamId: boolean;
 };
 
 export type BotMediaItem = {

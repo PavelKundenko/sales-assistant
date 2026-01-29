@@ -52,3 +52,26 @@ export interface SteamFeaturedCategoriesResponse {
   new_releases?: SteamFeaturedCategory;
   status: number;
 }
+
+export interface SteamAppDetailsData {
+  type?: string;
+  name?: string;
+  steam_appid?: number;
+  short_description?: string;
+  header_image?: string;
+  price_overview?: {
+    currency: string;
+    initial: number;
+    final: number;
+    discount_percent: number;
+    initial_formatted: string;
+    final_formatted: string;
+  };
+}
+
+export interface SteamAppDetailsEntry {
+  success: boolean;
+  data?: SteamAppDetailsData;
+}
+
+export type SteamAppDetailsResponse = Record<string, SteamAppDetailsEntry>;

@@ -1,55 +1,65 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
 import { SteamSaleDto } from './dto/steam-sale.dto';
+import { SteamWishlistItemDto } from './dto/steam-wishlist-item.dto';
 import { SteamGateway } from './steam.gateway';
+import { SteamSalesAdapter } from './steam-sales.adapter';
+import type { SteamPlayerResponse } from './interfaces/steam-user.interface';
 
 @Injectable()
 export class SteamService {
   private readonly logger = new Logger(SteamService.name);
 
-  constructor(private readonly steamGateway: SteamGateway) {}
+  constructor(
+    private readonly steamGateway: SteamGateway,
+    private readonly steamSalesAdapter: SteamSalesAdapter,
+  ) {}
 
   async getCurrentSales(): Promise<SteamSaleDto[]> {
     try {
       const data = await this.steamGateway.fetchFeaturedCategories();
 
-      return this.parseFeaturedGames(data);
+      return this.steamSalesAdapter.fromFeaturedCategories(data);
     } catch (error) {
       this.logger.error('Failed to fetch Steam sales', error);
       throw error;
     }
   }
 
-  private parseFeaturedGames(data: SteamFeaturedCategoriesResponse): SteamSaleDto[] {
-    const games: SteamSaleDto[] = [];
+  async getWishlist(steamId: string): Promise<SteamSaleDto[]> {
+    try {
+      const { response } = await this.steamGateway.fetchWishlist(steamId);
 
-    const specials = data.specials?.items || [];
+      const appIds = response.items?.map((item) => item.appid) || [];
 
-    for (const game of specials) {
-      if (game.discounted && game.discount_percent > 0) {
-        games.push(
-          new SteamSaleDto({
-            appId: game.id,
-            name: game.name,
-            originalPrice: (game.original_price || 0) / 100,
-            finalPrice: game.final_price / 100,
-            discountPercent: game.discount_percent,
-            headerImage: game.header_image,
-            storeUrl: `https://store.steampowered.com/app/${game.id}`,
-          }),
-        );
-      }
+      const promises = appIds.map((appId) => this.steamGateway.fetchAppDetails(appId));
+
+      const apps = await Promise.all(promises);
+
+      return this.steamSalesAdapter.fromAppDetails(apps);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Steam wishlist for ${steamId}`, error);
+      throw error;
     }
-
-    return this.rateSalesByAbsoluteDiscount(games);
   }
 
-  private rateSalesByAbsoluteDiscount(list: SteamSaleDto[]): SteamSaleDto[] {
-    return [...list].sort((a, b) => {
-      const discountA = (a.originalPrice ?? 0) - (a.finalPrice ?? a.originalPrice ?? 0);
-      const discountB = (b.originalPrice ?? 0) - (b.finalPrice ?? b.originalPrice ?? 0);
+  async getWishlistItems(steamId: string): Promise<SteamWishlistItemDto[]> {
+    try {
+      const { response } = await this.steamGateway.fetchWishlist(steamId);
 
-      return discountB - discountA;
-    });
+      const appIds = response?.items?.map((item) => item.appid) || [];
+
+      const promises = appIds.map((appId) => this.steamGateway.fetchAppDetails(appId));
+
+      const apps = await Promise.all(promises);
+
+      return this.steamSalesAdapter.fromAppDetailsToWishlist(apps);
+    } catch (error) {
+      this.logger.error(`Failed to fetch Steam wishlist for ${steamId}`, error);
+      throw error;
+    }
+  }
+
+  async resolveSteamUser(steamId: string): Promise<SteamPlayerResponse> {
+    return this.steamGateway.resolveSteamUser(steamId);
   }
 }

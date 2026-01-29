@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { SteamService } from './steam.service';
 import { SteamGateway } from './steam.gateway';
 import { SteamFeaturedCategoriesResponse, SteamFeaturedItem } from './interfaces/steam-game.interface';
+import { SteamSalesAdapter } from './steam-sales.adapter';
 
 const mockGame = (overrides: Partial<SteamFeaturedItem> = {}): SteamFeaturedItem => ({
   id: 1,
@@ -32,10 +33,13 @@ describe('SteamService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SteamService,
+        SteamSalesAdapter,
         {
           provide: SteamGateway,
           useValue: {
             fetchFeaturedCategories: jest.fn(),
+            fetchWishlist: jest.fn(),
+            fetchAppDetails: jest.fn(),
           },
         },
       ],
@@ -266,11 +270,107 @@ describe('SteamService', () => {
     expect(sales[0].storeUrl).toBe('https://store.steampowered.com/app/123456');
   });
 
-  it('logs error and re-throws when gateway fails', async () => {
-    const error = new Error('network down');
-    gateway.fetchFeaturedCategories.mockRejectedValue(error);
+  describe('getWishlist', () => {
+    it('successfully parses multiple app details from wishlist', async () => {
+      const wishlistResponse = {
+        response: {
+          items: [{ appid: 101 }, { appid: 102 }],
+        },
+      };
 
-    await expect(service.getCurrentSales()).rejects.toThrow('network down');
-    expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to fetch Steam sales', error);
+      const app101Response = {
+        '101': {
+          success: true,
+          data: {
+            steam_appid: 101,
+            name: 'Game 101',
+            price_overview: {
+              initial: 2000,
+              final: 1000,
+              discount_percent: 50,
+            },
+          },
+        },
+      };
+
+      const app102Response = {
+        '102': {
+          success: true,
+          data: {
+            steam_appid: 102,
+            name: 'Game 102',
+            price_overview: {
+              initial: 3000,
+              final: 1500,
+              discount_percent: 50,
+            },
+          },
+        },
+      };
+
+      gateway.fetchWishlist.mockResolvedValue(wishlistResponse as any);
+      gateway.fetchAppDetails.mockImplementation((appId) => {
+        if (appId === 101) return Promise.resolve(app101Response);
+        if (appId === 102) return Promise.resolve(app102Response);
+        return Promise.resolve({});
+      });
+
+      const result = await service.getWishlist('some-id');
+
+      expect(result).toHaveLength(2);
+      expect(result[0].appId).toBe(102); // Sorted by absolute discount (15 vs 10)
+      expect(result[1].appId).toBe(101);
+      expect(result[0].name).toBe('Game 102');
+      expect(result[1].name).toBe('Game 101');
+    });
+
+    it('filters out failed app details', async () => {
+      const wishlistResponse = {
+        response: {
+          items: [{ appid: 101 }, { appid: 102 }],
+        },
+      };
+
+      const app101Response = {
+        '101': {
+          success: false,
+        },
+      };
+
+      const app102Response = {
+        '102': {
+          success: true,
+          data: {
+            steam_appid: 102,
+            name: 'Game 102',
+            price_overview: {
+              initial: 3000,
+              final: 1500,
+              discount_percent: 50,
+            },
+          },
+        },
+      };
+
+      gateway.fetchWishlist.mockResolvedValue(wishlistResponse as any);
+      gateway.fetchAppDetails.mockImplementation((appId) => {
+        if (appId === 101) return Promise.resolve(app101Response as any);
+        if (appId === 102) return Promise.resolve(app102Response as any);
+        return Promise.resolve({});
+      });
+
+      const result = await service.getWishlist('some-id');
+
+      expect(result).toHaveLength(1);
+      expect(result[0].appId).toBe(102);
+    });
+
+    it('logs error and re-throws when fetchWishlist fails', async () => {
+      const error = new Error('wishlist error');
+      gateway.fetchWishlist.mockRejectedValue(error);
+
+      await expect(service.getWishlist('some-id')).rejects.toThrow('wishlist error');
+      expect(loggerErrorSpy).toHaveBeenCalledWith('Failed to fetch Steam wishlist for some-id', error);
+    });
   });
 });

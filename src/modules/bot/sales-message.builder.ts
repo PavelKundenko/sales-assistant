@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SteamSaleDto } from '../steam/dto/steam-sale.dto';
+import { SteamWishlistItemDto } from '../steam/dto/steam-wishlist-item.dto';
 import type { BotMediaItem } from './bot.types';
 
 export type SalesMediaGroup = BotMediaItem[];
@@ -54,12 +55,59 @@ export class SalesMessageBuilder {
     return mediaGroup;
   }
 
-  private formatPrice(price?: number | null): string {
-    if (typeof price !== 'number') {
-      return 'Н/Д';
+  buildWishlistMessage(items: SteamWishlistItemDto[]): SalesMediaGroup {
+    if (items.length === 0) {
+      throw new Error('Wishlist collection is empty');
     }
 
-    return `₴${price.toFixed(2)}`;
+    const topItems = items.slice(0, 2);
+    const itemsWithImages = topItems
+      .map((game) => ({ game, imageUrl: this.sanitizeUrl(game.headerImage) }))
+      .filter((entry): entry is { game: SteamWishlistItemDto; imageUrl: string } => Boolean(entry.imageUrl));
+
+    if (itemsWithImages.length === 0) {
+      throw new Error('No valid wishlist images available');
+    }
+
+    const includedItems: Array<{ game: SteamWishlistItemDto; imageUrl: string }> = itemsWithImages;
+
+    const mediaGroup = includedItems.map(({ imageUrl }): BotMediaItem => {
+      const mediaItem: BotMediaItem = {
+        type: 'photo',
+        media: imageUrl,
+      };
+
+      return mediaItem;
+    });
+
+    return mediaGroup;
+  }
+
+  buildWishlistText(items: SteamWishlistItemDto[]): string {
+    if (items.length === 0) {
+      return 'Ваш список бажаного порожній.';
+    }
+
+    const lines: string[] = ['📋 Ваш список бажаного:\n'];
+
+    for (const game of items) {
+      const name = this.escapeHtml(game.name ?? 'Невідома назва');
+      const storeUrl = this.sanitizeUrl(game.storeUrl);
+      const title = storeUrl ? `<a href="${this.escapeHtml(storeUrl)}">${name}</a>` : name;
+
+      const originalPrice = this.formatPrice(game.originalPrice);
+      const finalPrice = this.formatPrice(game.finalPrice);
+
+      const hasDiscount = typeof game.discountPercent === 'number' && game.discountPercent > 0;
+
+      if (hasDiscount) {
+        lines.push(title, `💰 Знижка ${game.discountPercent}%`, `Ціна: <s>${originalPrice}</s> ${finalPrice}`, '');
+      } else {
+        lines.push(title, `Ціна: ${finalPrice}`, '');
+      }
+    }
+
+    return lines.join('\n').trim();
   }
 
   private sanitizeUrl(value?: string | null): string | null {
@@ -96,5 +144,13 @@ export class SalesMessageBuilder {
           return char;
       }
     });
+  }
+
+  private formatPrice(price?: number | null): string {
+    if (typeof price !== 'number') {
+      return 'Н/Д';
+    }
+
+    return `₴${price.toFixed(2)}`;
   }
 }
