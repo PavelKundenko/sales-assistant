@@ -35,6 +35,7 @@ describe('UsersService', () => {
     const result = await service.findByTelegramId('123');
 
     expect(result).toBe(user);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.findOne).toHaveBeenCalledWith({ where: { telegramId: '123' } });
   });
 
@@ -46,6 +47,7 @@ describe('UsersService', () => {
 
     expect(user).toBe(existing);
     expect(created).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.save).not.toHaveBeenCalled();
   });
 
@@ -62,6 +64,7 @@ describe('UsersService', () => {
 
     const [user, created] = await service.createOrGet('555');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.save).toHaveBeenCalledWith(existing);
     expect(existing.status).toBe(UserStatus.ACTIVE);
     expect(existing.deactivatedAt).toBeNull();
@@ -77,7 +80,9 @@ describe('UsersService', () => {
 
     const [user, created] = await service.createOrGet('999');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.create).toHaveBeenCalledWith({ telegramId: '999', status: UserStatus.ACTIVE });
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.save).toHaveBeenCalledWith(createdEntity);
     expect(user).toBe(createdEntity);
     expect(created).toBe(true);
@@ -88,10 +93,20 @@ describe('UsersService', () => {
 
     await service.removeByTelegramId('777');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.update).toHaveBeenCalledTimes(1);
     const [criteria, data] = repository.update.mock.calls[0];
     expect(criteria).toEqual({ telegramId: '777' });
     expect(data.status).toBe(UserStatus.INACTIVE);
     expect(data.deactivatedAt).toBeInstanceOf(Date);
+  });
+
+  it('sets steam id for user', async () => {
+    repository.update.mockResolvedValue({} as never);
+
+    await service.setSteamId('user-1', '76561198000000000');
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.update).toHaveBeenCalledWith({ id: 'user-1' }, { steamId: '76561198000000000' });
   });
 });

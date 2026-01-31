@@ -5,7 +5,9 @@ export interface TelegramConfig {
 }
 
 export interface SteamConfig {
-  apiUrl: string;
+  storeUrl: string;
+  webApiUrl: string;
+  apiKey: string;
 }
 
 export const telegramConfig = registerAs(
@@ -18,6 +20,8 @@ export const telegramConfig = registerAs(
 export const steamConfig = registerAs(
   'steam',
   (): SteamConfig => ({
-    apiUrl: process.env.STEAM_API_URL ?? 'https://store.steampowered.com/api',
+    storeUrl: process.env.STEAM_STORE_API ?? 'https://store.steampowered.com/api',
+    webApiUrl: process.env.STEAM_API_URL ?? 'https://api.steampowered.com',
+    apiKey: process.env.STEAM_API_KEY ?? '',
   }),
 );

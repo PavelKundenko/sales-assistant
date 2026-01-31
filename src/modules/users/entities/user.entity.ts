@@ -19,6 +19,9 @@ export class UserEntity {
   @Column({ name: 'telegram_id', type: 'bigint' })
   telegramId!: string;
 
+  @Column({ name: 'steam_id', type: 'varchar', nullable: true })
+  steamId?: string | null;
+
   @Column({
     type: 'enum',
     enum: UserStatus,

@@ -3,12 +3,21 @@ import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
 import { SteamGateway } from './steam.gateway';
 import { steamConfig } from '../../configuration';
-import { SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
+import { SteamAppDetailsResponse, SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
+import {
+  SteamPlayerSummariesResponse,
+  SteamPlayerResponse,
+  SteamWishlistResponse,
+} from './interfaces/steam-user.interface';
 
 describe('SteamGateway', () => {
   let gateway: SteamGateway;
   let httpService: jest.Mocked<HttpService>;
-  const config = { apiUrl: 'https://store.steampowered.com/api' };
+  const config = {
+    storeUrl: 'https://store.steampowered.com/api',
+    webApiUrl: 'https://api.steampowered.com',
+    apiKey: 'test-api-key',
+  };
 
   beforeEach(async () => {
     const mockHttpService = {
@@ -27,75 +36,157 @@ describe('SteamGateway', () => {
     httpService = module.get(HttpService);
   });
 
-  it('fetches featured games using HttpService', async () => {
-    const responseData: SteamFeaturedCategoriesResponse = {
-      status: 1,
-      specials: { id: 'specials', name: 'Specials', items: [] },
-    };
-    httpService.get.mockReturnValue(of({ data: responseData }) as never);
+  describe('fetchFeaturedCategories', () => {
+    it('fetches featured games using HttpService', async () => {
+      const responseData: SteamFeaturedCategoriesResponse = {
+        status: 1,
+        specials: { id: 'specials', name: 'Specials', items: [] },
+      };
+      httpService.get.mockReturnValue(of({ data: responseData }) as never);
 
-    const result = await gateway.fetchFeaturedCategories();
+      const result = await gateway.fetchFeaturedCategories();
 
-    expect(result).toEqual(responseData);
-    expect(httpService.get.mock.calls).toHaveLength(1);
-    const callUrl = httpService.get.mock.calls[0][0];
-    expect(callUrl).toContain('/featuredcategories');
-    const callConfig = httpService.get.mock.calls[0][1];
-    expect(callConfig).toEqual({ params: { cc: 'UA' } });
+      expect(result).toEqual(responseData);
+      expect(httpService.get.mock.calls).toHaveLength(1);
+      const callUrl = httpService.get.mock.calls[0][0];
+      expect(callUrl).toContain('/featuredcategories');
+      const callConfig = httpService.get.mock.calls[0][1];
+      expect(callConfig).toEqual({ params: { cc: 'UA' } });
+    });
+
+    it('wraps errors when the request fails', async () => {
+      const originalError = new Error('boom');
+      httpService.get.mockReturnValue(throwError(() => originalError) as never);
+
+      await expect(gateway.fetchFeaturedCategories()).rejects.toThrow('Failed to fetch Steam sales');
+    });
   });
 
-  it('returns data from successful response', async () => {
-    const responseData: SteamFeaturedCategoriesResponse = {
-      status: 1,
-      specials: {
-        id: 'specials',
-        name: 'Specials',
-        items: [
-          {
-            id: 123,
-            type: 0,
-            name: 'Test Game',
-            discounted: true,
-            discount_percent: 50,
-            original_price: 2000,
-            final_price: 1000,
-            currency: 'USD',
-            large_capsule_image: 'large.jpg',
-            small_capsule_image: 'small.jpg',
-            windows_available: true,
-            mac_available: true,
-            linux_available: true,
-            streamingvideo_available: true,
-            header_image: 'test.jpg',
+  describe('resolveSteamUser', () => {
+    it('returns raw player info when user is found via Web API', async () => {
+      const steamId = '76561198000000000';
+      const playerInfo: SteamPlayerResponse = {
+        steamid: steamId,
+        personaname: 'TestUser',
+        profileurl: 'https://steamcommunity.com/id/testuser/',
+        avatar: 'https://example.com/avatar.jpg',
+        avatarmedium: 'https://example.com/avatar_medium.jpg',
+        avatarfull: 'https://example.com/avatar_full.jpg',
+        avatarhash: 'abc123',
+        personastate: 1,
+        communityvisibilitystate: 3,
+      };
+
+      const apiResponse: SteamPlayerSummariesResponse = {
+        response: {
+          players: [playerInfo],
+        },
+      };
+
+      httpService.get.mockReturnValue(of({ data: apiResponse }) as never);
+
+      const result = await gateway.resolveSteamUser(steamId);
+
+      expect(result).toEqual(playerInfo);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(httpService.get).toHaveBeenCalledWith(`${config.webApiUrl}/ISteamUser/GetPlayerSummaries/v0002/`, {
+        params: {
+          key: config.apiKey,
+          steamids: steamId,
+        },
+      });
+    });
+
+    it('throws error when user is not found (empty array)', async () => {
+      const steamId = '76561198000000000';
+      const apiResponse: SteamPlayerSummariesResponse = {
+        response: {
+          players: [],
+        },
+      };
+
+      httpService.get.mockReturnValue(of({ data: apiResponse }) as never);
+
+      await expect(gateway.resolveSteamUser(steamId)).rejects.toThrow(`Failed to resolve Steam user: ${steamId}`);
+    });
+
+    it('wraps errors when the request fails', async () => {
+      const steamId = 'any';
+      const originalError = new Error('Network error');
+      httpService.get.mockReturnValue(throwError(() => originalError) as never);
+
+      await expect(gateway.resolveSteamUser(steamId)).rejects.toThrow(`Failed to resolve Steam user: ${steamId}`);
+    });
+  });
+
+  describe('fetchWishlist', () => {
+    it('fetches wishlist data for a given Steam ID', async () => {
+      const steamId = '76561198000000000';
+      const mockWishlist: SteamWishlistResponse = {
+        response: {
+          items: [
+            {
+              appid: 10,
+              priority: 0,
+              date_added: 12345678,
+            },
+          ],
+          total_count: 1,
+        },
+      };
+
+      httpService.get.mockReturnValue(of({ data: mockWishlist }) as never);
+
+      const result = await gateway.fetchWishlist(steamId);
+
+      expect(result).toEqual(mockWishlist);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(httpService.get).toHaveBeenCalledWith(`${config.webApiUrl}/IWishlistService/GetWishlist/v1`, {
+        params: { key: config.apiKey, steamid: steamId },
+      });
+    });
+
+    it('wraps errors when the request fails', async () => {
+      const steamId = '76561198000000000';
+      const originalError = new Error('Wishlist private');
+      httpService.get.mockReturnValue(throwError(() => originalError) as never);
+
+      await expect(gateway.fetchWishlist(steamId)).rejects.toThrow(`Failed to fetch wishlist for Steam ID: ${steamId}`);
+    });
+  });
+
+  describe('fetchAppDetails', () => {
+    it('fetches app details for the provided app id', async () => {
+      const appId = 10;
+      const response: SteamAppDetailsResponse = {
+        '10': {
+          success: true,
+          data: {
+            steam_appid: 10,
+            name: 'Counter-Strike',
           },
-        ],
-      },
-    };
-    httpService.get.mockReturnValue(of({ data: responseData }) as never);
+        },
+      };
 
-    const result = await gateway.fetchFeaturedCategories();
+      httpService.get.mockReturnValue(of({ data: response }) as never);
 
-    expect(result).toEqual(responseData);
-  });
+      const result = await gateway.fetchAppDetails(appId);
 
-  it('wraps errors when the request fails', async () => {
-    const originalError = new Error('boom');
-    httpService.get.mockReturnValue(throwError(() => originalError) as never);
+      expect(result).toEqual(response);
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      expect(httpService.get).toHaveBeenCalledWith(`${config.storeUrl}/appdetails`, {
+        params: { appids: appId, cc: 'UA', filters: 'basic,price_overview' },
+      });
+    });
 
-    await expect(gateway.fetchFeaturedCategories()).rejects.toThrow('Failed to fetch Steam sales');
-  });
+    it('wraps errors when the request fails', async () => {
+      const appId = 10;
+      const originalError = new Error('App details error');
+      httpService.get.mockReturnValue(throwError(() => originalError) as never);
 
-  it('preserves original error as cause when request fails', async () => {
-    const originalError = new Error('Network timeout');
-    httpService.get.mockReturnValue(throwError(() => originalError) as never);
-
-    try {
-      await gateway.fetchFeaturedCategories();
-      fail('Should have thrown an error');
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as Error).message).toBe('Failed to fetch Steam sales');
-      expect((error as Error).cause).toBe(originalError);
-    }
+      await expect(gateway.fetchAppDetails(appId)).rejects.toThrow(
+        `Failed to fetch Steam app details for ids: ${appId}`,
+      );
+    });
   });
 });

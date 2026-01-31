@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { UserEntity, UserStatus } from './entities/user.entity';
 
 @Injectable()
@@ -44,5 +44,13 @@ export class UsersService {
 
   async removeByTelegramId(telegramId: string): Promise<void> {
     await this.repository.update({ telegramId }, { status: UserStatus.INACTIVE, deactivatedAt: new Date() });
+  }
+
+  async setSteamId(userId: string, steamId: string): Promise<void> {
+    await this.repository.update({ id: userId }, { steamId });
+  }
+
+  async getUsersWithSteamId(): Promise<UserEntity[]> {
+    return this.repository.find({ where: { steamId: Not(IsNull()) } });
   }
 }

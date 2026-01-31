@@ -1,16 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { SteamSaleDto } from '../steam/dto/steam-sale.dto';
-import type { BotMediaItem } from './bot.types';
+import { SteamSaleDto } from '../../../steam/dto/steam-sale.dto';
+import type { BotMediaItem } from '../../core/bot.types';
+import { SteamMessageBuilder, type SteamMessageBuilderOptions } from './steam-message.builder';
 
 export type SalesMediaGroup = BotMediaItem[];
+type SalesMessageBuilderOptions = SteamMessageBuilderOptions & { limit?: number };
 
 @Injectable()
-export class SalesMessageBuilder {
-  buildTopSalesMessage(sales: SteamSaleDto[], limit = 10): SalesMediaGroup {
+export class SalesMessageBuilder extends SteamMessageBuilder<SteamSaleDto[], SalesMediaGroup> {
+  build(sales: SteamSaleDto[], options: SalesMessageBuilderOptions = {}): SalesMediaGroup {
     if (sales.length === 0) {
       throw new Error('Sales collection is empty');
     }
 
+    const limit = options.limit ?? 10;
     const topSales = sales.slice(0, limit);
 
     const salesWithImages = topSales
@@ -20,7 +23,11 @@ export class SalesMessageBuilder {
     if (salesWithImages.length === 0) {
       throw new Error('No valid sales images available');
     }
-    const captionLines = ['🔥 Актуальні знижки у Steam:\n'];
+    const captionLines: string[] = [];
+
+    if (options.intro) {
+      captionLines.push(options.intro);
+    }
 
     for (const { game } of salesWithImages) {
       const name = this.escapeHtml(game.name ?? 'Невідома назва');
@@ -52,49 +59,5 @@ export class SalesMessageBuilder {
     });
 
     return mediaGroup;
-  }
-
-  private formatPrice(price?: number | null): string {
-    if (typeof price !== 'number') {
-      return 'Н/Д';
-    }
-
-    return `₴${price.toFixed(2)}`;
-  }
-
-  private sanitizeUrl(value?: string | null): string | null {
-    if (!value) {
-      return null;
-    }
-
-    try {
-      const url = new URL(value);
-      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-        return null;
-      }
-
-      return url.toString();
-    } catch {
-      return null;
-    }
-  }
-
-  private escapeHtml(value: string): string {
-    return value.replace(/[&<>"']/g, (char) => {
-      switch (char) {
-        case '&':
-          return '&amp;';
-        case '<':
-          return '&lt;';
-        case '>':
-          return '&gt;';
-        case '"':
-          return '&quot;';
-        case "'":
-          return '&#39;';
-        default:
-          return char;
-      }
-    });
   }
 }

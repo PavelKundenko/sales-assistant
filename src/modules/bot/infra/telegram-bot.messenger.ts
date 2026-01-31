@@ -2,14 +2,31 @@ import { Injectable } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 import { InputMediaPhoto } from 'telegraf/types';
-import type { BotChatId, BotMediaItem, BotMessageOptions, BotMessenger } from './bot.types';
+import type { BotChatId, BotMediaItem, BotMessageOptions, BotMessenger } from '../core/bot.types';
 
 @Injectable()
 export class TelegramBotMessenger implements BotMessenger {
   constructor(@InjectBot() private readonly bot: Telegraf<Context>) {}
 
   async sendMessage(chatId: BotChatId, text: string, options?: BotMessageOptions): Promise<void> {
-    const extra = options?.keyboard ? Markup.keyboard(options.keyboard).resize() : undefined;
+    const extra: {
+      reply_markup?: ReturnType<typeof Markup.keyboard>['reply_markup'];
+      parse_mode?: 'HTML';
+      disable_web_page_preview?: boolean;
+    } = {};
+
+    if (options?.keyboard) {
+      extra.reply_markup = Markup.keyboard(options.keyboard).resize().reply_markup;
+    }
+
+    if (options?.parseMode) {
+      extra.parse_mode = options.parseMode;
+    }
+
+    if (options?.disableWebPagePreview !== undefined) {
+      extra.disable_web_page_preview = options.disableWebPagePreview;
+    }
+
     await this.bot.telegram.sendMessage(chatId, text, extra);
   }
 

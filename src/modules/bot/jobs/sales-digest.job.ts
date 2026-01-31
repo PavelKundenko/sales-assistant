@@ -1,19 +1,27 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SteamService } from '../steam/steam.service';
-import { SalesMessageBuilder } from './sales-message.builder';
-import { SubscriptionsService } from '../subscriptions/subscriptions.service';
-import { SubscriptionType } from '../subscriptions/entities/subscription.entity';
-import { BOT_MESSENGER, type BotMessenger } from './bot.types';
+import { SubscriptionType } from '../../subscriptions/entities/subscription.entity';
+import { BOT_MESSENGER, type BotMessenger } from '../core/bot.types';
+import {
+  BOT_SALES_MESSAGE_BUILDER,
+  BOT_STEAM_SERVICE,
+  BOT_SUBSCRIPTIONS_SERVICE,
+  type SalesMessageBuilderPort,
+  type SteamServicePort,
+  type SubscriptionsServicePort,
+} from '../ports/bot.ports';
 
 @Injectable()
 export class SalesDigestJob {
   private readonly logger = new Logger(SalesDigestJob.name);
 
   constructor(
-    private readonly subscriptionsService: SubscriptionsService,
-    private readonly steamService: SteamService,
-    private readonly salesMessageBuilder: SalesMessageBuilder,
+    @Inject(BOT_SUBSCRIPTIONS_SERVICE)
+    private readonly subscriptionsService: SubscriptionsServicePort,
+    @Inject(BOT_STEAM_SERVICE)
+    private readonly steamService: SteamServicePort,
+    @Inject(BOT_SALES_MESSAGE_BUILDER)
+    private readonly salesMessageBuilder: SalesMessageBuilderPort,
     @Inject(BOT_MESSENGER)
     private readonly messenger: BotMessenger,
   ) {}
@@ -32,10 +40,13 @@ export class SalesDigestJob {
 
       if (sales.length === 0) {
         this.logger.log('No sales available for daily digest');
+
         return;
       }
 
-      const mediaGroup = this.salesMessageBuilder.buildTopSalesMessage(sales);
+      const mediaGroup = this.salesMessageBuilder.build(sales, {
+        intro: `🔥 Актуальні знижки у Steam на ${new Date().toLocaleDateString()}:\n`,
+      });
 
       for (const subscription of subscriptions) {
         const telegramId = subscription.user.telegramId;
