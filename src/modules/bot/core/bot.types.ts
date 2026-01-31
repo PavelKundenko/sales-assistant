@@ -23,7 +23,13 @@ export type BotMediaItem = {
 export interface BotMessenger {
   sendMessage(chatId: BotChatId, text: string, options?: BotMessageOptions): Promise<void>;
   sendMediaGroup(chatId: BotChatId, media: BotMediaItem[]): Promise<void>;
+  setMyCommands(commands: BotCommand[]): Promise<void>;
 }
+
+export type BotCommand = {
+  command: string;
+  description: string;
+};
 
 export type BotRequest = {
   chatId: BotChatId | null;

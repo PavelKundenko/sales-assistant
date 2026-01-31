@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 import { InputMediaPhoto } from 'telegraf/types';
-import type { BotChatId, BotMediaItem, BotMessageOptions, BotMessenger } from '../core/bot.types';
+import type { BotChatId, BotCommand, BotMediaItem, BotMessageOptions, BotMessenger } from '../core/bot.types';
 
 @Injectable()
 export class TelegramBotMessenger implements BotMessenger {
@@ -47,7 +47,10 @@ export class TelegramBotMessenger implements BotMessenger {
 
       return entry;
     });
-
     await this.bot.telegram.sendMediaGroup(chatId, mediaGroup);
+  }
+
+  async setMyCommands(commands: BotCommand[]): Promise<void> {
+    await this.bot.telegram.setMyCommands(commands);
   }
 }
