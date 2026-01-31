@@ -5,7 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import * as Joi from 'joi';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { BotModule } from './modules/bot/bot.module';
+import { BotModule } from './modules/bot/core/bot.module';
 import { SteamModule } from './modules/steam/steam.module';
 import { UsersModule } from './modules/users/users.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';

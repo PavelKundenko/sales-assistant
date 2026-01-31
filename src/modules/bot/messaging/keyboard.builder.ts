@@ -6,8 +6,8 @@ import {
   UNSUBSCRIBE_BUTTON_LABEL,
   CONNECT_WISHLIST_BUTTON_LABEL,
   WISHLIST_BUTTON_LABEL,
-} from './bot.constants';
-import type { BotKeyboard, BuildKeyboardParams } from './bot.types';
+} from '../core/bot.constants';
+import type { BotKeyboard, BuildKeyboardParams } from '../core/bot.types';
 
 @Injectable()
 export class KeyboardBuilder {

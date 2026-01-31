@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 import { InputMediaPhoto } from 'telegraf/types';
-import type { BotChatId, BotMediaItem, BotMessageOptions, BotMessenger } from './bot.types';
+import type { BotChatId, BotMediaItem, BotMessageOptions, BotMessenger } from '../core/bot.types';
 
 @Injectable()
 export class TelegramBotMessenger implements BotMessenger {
