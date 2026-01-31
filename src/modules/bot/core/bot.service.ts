@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import {
   BOT_SALES_MESSAGE_BUILDER,
   BOT_STEAM_SERVICE,
@@ -18,7 +18,7 @@ import { BotContextService } from './bot-context.service';
 import { BotMessages, type BotReply } from '../messaging/bot.messages';
 
 @Injectable()
-export class BotService {
+export class BotService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BotService.name);
 
   constructor(
@@ -37,6 +37,16 @@ export class BotService {
     private readonly contextService: BotContextService,
     private readonly messages: BotMessages,
   ) {}
+
+  async onApplicationBootstrap(): Promise<void> {
+    await this.messenger.setMyCommands([
+      { command: 'start', description: 'Початок роботи' },
+      { command: 'sales', description: '🔥 Актуальні знижки' },
+      { command: 'wishlist', description: '📋 Список бажаного' },
+      { command: 'setup_wishlist', description: '⚙️ Налаштувати Steam ID' },
+      { command: 'help', description: 'ℹ️ Довідка' },
+    ]);
+  }
 
   async handleStart(request: BotRequest): Promise<void> {
     const telegramId = request.telegramUserId;
@@ -105,6 +115,107 @@ export class BotService {
     await this.sendReply(chatId, reply);
   }
 
+  async handleSubscribeCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    await this.handleSubscribe(context.chatId, context.user, context.activeSubscription);
+  }
+
+  async handleUnsubscribeCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    await this.handleUnsubscribe(context.chatId, context.activeSubscription, Boolean(context.user.steamId));
+  }
+
+  async handleWishlistCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    if (!context.user.steamId) {
+      await this.sendReply(context.chatId, this.messages.steamIdGuideMessage());
+
+      return;
+    }
+
+    await this.handleWishlist(context.chatId, context.user.steamId);
+  }
+
+  async handleConnectWishlistCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    if (context.user.steamId) {
+      await this.sendReply(context.chatId, this.messages.steamIdAlreadyConnectedMessage());
+
+      return;
+    }
+
+    await this.sendReply(context.chatId, this.messages.steamIdGuideMessage());
+  }
+
+  async handleSetupWishlistCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    const text = request.text;
+    const args = text?.split(' ') ?? [];
+
+    const potentialSteamId = args.length > 1 ? args[1] : null;
+
+    if (!potentialSteamId) {
+      await this.sendReply(context.chatId, this.messages.steamIdGuideMessage());
+
+      return;
+    }
+
+    if (!this.isValidSteamId(potentialSteamId)) {
+      await this.sendReply(context.chatId, this.messages.steamIdGuideMessage());
+
+      return;
+    }
+
+    await this.handleSteamIdSetup(context.chatId, context.user, potentialSteamId, Boolean(context.activeSubscription));
+  }
+
+  async handleTextCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context || !request.text) {
+      return;
+    }
+
+    const { chatId, user, activeSubscription } = context;
+
+    if (!user.steamId) {
+      const steamId = this.parseSteamId(request.text);
+
+      if (steamId) {
+        await this.handleSteamIdSetup(chatId, user, steamId, Boolean(activeSubscription));
+
+        return;
+      }
+    }
+
+    await this.sendUnknownText(chatId, Boolean(activeSubscription), Boolean(user.steamId));
+  }
+
   async handleSubscribe(
     chatId: NonNullable<BotRequest['chatId']>,
     user: UserEntity,
@@ -129,7 +240,7 @@ export class BotService {
     await this.sendReply(chatId, this.messages.unsubscribeMessage(hasSteamId));
   }
 
-  async handleWishlist(chatId: NonNullable<BotRequest['chatId']>, steamId: string): Promise<void> {
+  private async handleWishlist(chatId: NonNullable<BotRequest['chatId']>, steamId: string): Promise<void> {
     await this.sendReply(chatId, this.messages.wishlistLoadingMessage());
 
     try {
@@ -156,6 +267,7 @@ export class BotService {
     }
   }
 
+  // Keeping this public as it was effectively used by router before, but now effectively private/helper
   async handleSteamIdSetup(
     chatId: NonNullable<BotRequest['chatId']>,
     user: UserEntity,
@@ -174,18 +286,6 @@ export class BotService {
     }
   }
 
-  async sendSteamIdGuide(chatId: NonNullable<BotRequest['chatId']>): Promise<void> {
-    await this.sendReply(chatId, this.messages.steamIdGuideMessage());
-  }
-
-  async sendSteamIdAlreadyConnected(chatId: NonNullable<BotRequest['chatId']>): Promise<void> {
-    await this.sendReply(chatId, this.messages.steamIdAlreadyConnectedMessage());
-  }
-
-  async sendStartRequired(chatId: NonNullable<BotRequest['chatId']>): Promise<void> {
-    await this.sendReply(chatId, this.messages.startRequiredMessage());
-  }
-
   async sendUnknownText(
     chatId: NonNullable<BotRequest['chatId']>,
     isSubscribed: boolean,
@@ -196,5 +296,39 @@ export class BotService {
 
   private async sendReply(chatId: NonNullable<BotRequest['chatId']>, reply: BotReply): Promise<void> {
     await this.messenger.sendMessage(chatId, reply.text, reply.options);
+  }
+
+  private async validateRequest(request: BotRequest): Promise<{
+    chatId: NonNullable<BotRequest['chatId']>;
+    user: UserEntity;
+    activeSubscription: SubscriptionEntity | null;
+  } | null> {
+    const chatId = request.chatId;
+
+    if (!chatId) {
+      return null;
+    }
+
+    const { user, activeSubscription } = await this.contextService.getSubscriptionContext(
+      request.telegramUserId ?? undefined,
+    );
+
+    if (!user) {
+      await this.sendReply(chatId, this.messages.startRequiredMessage());
+
+      return null;
+    }
+
+    return { chatId, user, activeSubscription };
+  }
+
+  private parseSteamId(text: string): string | null {
+    const trimmed = text.trim();
+
+    return this.isValidSteamId(trimmed) ? trimmed : null;
+  }
+
+  private isValidSteamId(text: string): boolean {
+    return /^\d{17}$/.test(text);
   }
 }

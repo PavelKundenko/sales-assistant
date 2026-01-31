@@ -29,7 +29,14 @@ export class BotMessages {
 
   helpMessage(isSubscribed: boolean, hasSteamId: boolean): BotReply {
     return {
-      text: 'Доступні команди:\n/start - Запустити бота\n/help - Показати це повідомлення\n/sales - Отримати актуальні знижки\n\nТакож ви можете натиснути кнопку нижче.',
+      text:
+        'Доступні команди:\n' +
+        '/start - Запустити бота\n' +
+        '/sales - Отримати актуальні знижки\n' +
+        '/wishlist - Переглянути список бажаного\n' +
+        '/setup_wishlist - Налаштувати Steam ID\n' +
+        '/help - Показати це повідомлення\n\n' +
+        'Щоб підключити Steam ID, ви також можете просто надіслати його в повідомленні (17 цифр).',
       options: {
         keyboard: this.buildMainKeyboard(isSubscribed, hasSteamId),
       },

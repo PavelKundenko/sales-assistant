@@ -35,6 +35,7 @@ describe('BotService', () => {
     messenger = {
       sendMessage: jest.fn(),
       sendMediaGroup: jest.fn(),
+      setMyCommands: jest.fn(),
     } as unknown as jest.Mocked<BotMessenger>;
 
     steamService = {
@@ -214,37 +215,40 @@ describe('BotService', () => {
     });
   });
 
-  describe('handleWishlist', () => {
+  describe('handleWishlistCommand', () => {
     it('should send wishlist media group', async () => {
       const mockItems = [{ name: 'Item 1' }] as any;
       const mockMedia = [{ type: 'photo', media: 'img' }] as any;
 
+      contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);
       messages.wishlistLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getWishlistItems.mockResolvedValue(mockItems);
       wishlistMessageBuilder.build.mockReturnValue(mockMedia);
 
-      await service.handleWishlist(123, 'steam-id');
+      await service.handleWishlistCommand(mockRequest);
 
       expect(steamService.getWishlistItems as jest.Mock).toHaveBeenCalledWith('steam-id');
       expect(messenger.sendMediaGroup as jest.Mock).toHaveBeenCalledWith(123, mockMedia);
     });
 
     it('should handle empty wishlist', async () => {
+      contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);
       messages.wishlistLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getWishlistItems.mockResolvedValue([]);
       messages.wishlistEmptyMessage.mockReturnValue({ text: 'Empty' });
 
-      await service.handleWishlist(123, 'steam-id');
+      await service.handleWishlistCommand(mockRequest);
 
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Empty', undefined);
     });
 
     it('should handle wishlist error', async () => {
+      contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);
       messages.wishlistLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getWishlistItems.mockRejectedValue(new Error('Fail'));
       messages.wishlistErrorMessage.mockReturnValue({ text: 'Error' });
 
-      await service.handleWishlist(123, 'steam-id');
+      await service.handleWishlistCommand(mockRequest);
 
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Error', undefined);
     });
@@ -272,28 +276,24 @@ describe('BotService', () => {
   });
 
   describe('Helper send methods', () => {
-    it('sendSteamIdGuide should send guide', async () => {
-      messages.steamIdGuideMessage.mockReturnValue({ text: 'Guide' });
-      await service.sendSteamIdGuide(123);
-      expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Guide', undefined);
-    });
-
-    it('sendSteamIdAlreadyConnected should send message', async () => {
-      messages.steamIdAlreadyConnectedMessage.mockReturnValue({ text: 'Already' });
-      await service.sendSteamIdAlreadyConnected(123);
-      expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Already', undefined);
-    });
-
-    it('sendStartRequired should send message', async () => {
-      messages.startRequiredMessage.mockReturnValue({ text: 'Start msg' });
-      await service.sendStartRequired(123);
-      expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Start msg', undefined);
-    });
-
     it('sendUnknownText should send unknown msg', async () => {
       messages.unknownTextMessage.mockReturnValue({ text: 'Unknown' });
       await service.sendUnknownText(123, true, true);
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Unknown', undefined);
+    });
+  });
+
+  describe('onApplicationBootstrap', () => {
+    it('should set bot commands', async () => {
+      await service.onApplicationBootstrap();
+
+      expect(messenger.setMyCommands).toHaveBeenCalledWith([
+        { command: 'start', description: 'Початок роботи' },
+        { command: 'sales', description: '🔥 Актуальні знижки' },
+        { command: 'wishlist', description: '📋 Список бажаного' },
+        { command: 'setup_wishlist', description: '⚙️ Налаштувати Steam ID' },
+        { command: 'help', description: 'ℹ️ Довідка' },
+      ]);
     });
   });
 });
