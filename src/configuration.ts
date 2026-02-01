@@ -2,6 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export interface TelegramConfig {
   botToken: string;
+  adminId: number;
 }
 
 export interface SteamConfig {
@@ -14,6 +15,7 @@ export const telegramConfig = registerAs(
   'telegram',
   (): TelegramConfig => ({
     botToken: process.env.TELEGRAM_BOT_TOKEN ?? '',
+    adminId: Number(process.env.TELEGRAM_ADMIN_ID ?? 0),
   }),
 );
 

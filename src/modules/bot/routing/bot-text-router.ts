@@ -63,6 +63,12 @@ export class BotTextRouter {
       return;
     }
 
+    if (text.startsWith('/post')) {
+      await this.botService.handlePostCommand(request);
+
+      return;
+    }
+
     await this.botService.handleTextCommand(request);
   }
 }

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { telegramConfig, type TelegramConfig } from '../../../configuration';
 import {
   BOT_SALES_MESSAGE_BUILDER,
   BOT_STEAM_SERVICE,
@@ -34,6 +35,8 @@ export class BotService implements OnApplicationBootstrap {
     private readonly usersService: UsersServicePort,
     @Inject(BOT_SUBSCRIPTIONS_SERVICE)
     private readonly subscriptionsService: SubscriptionsServicePort,
+    @Inject(telegramConfig.KEY)
+    private readonly config: TelegramConfig,
     private readonly contextService: BotContextService,
     private readonly messages: BotMessages,
   ) {}
@@ -192,6 +195,42 @@ export class BotService implements OnApplicationBootstrap {
     }
 
     await this.handleSteamIdSetup(context.chatId, context.user, potentialSteamId, Boolean(context.activeSubscription));
+  }
+
+  async handlePostCommand(request: BotRequest): Promise<void> {
+    const chatId = request.chatId;
+
+    if (!chatId || !request.text) {
+      return;
+    }
+
+    if (chatId !== this.config.adminId) {
+      return;
+    }
+
+    const textPayload = request.text.replace('/post', '').trim();
+
+    if (!textPayload) {
+      await this.messenger.sendMessage(chatId, 'Please provide a message to send.');
+
+      return;
+    }
+
+    const users = await this.usersService.findAllActive();
+
+    let successCount = 0;
+
+    for (const user of users) {
+      try {
+        await this.messenger.sendMessage(Number(user.telegramId), textPayload);
+
+        successCount++;
+      } catch (e) {
+        this.logger.error(`Failed to send message to user ${user.telegramId}`, e);
+      }
+    }
+
+    await this.messenger.sendMessage(chatId, `Message sent to ${successCount} active users.`);
   }
 
   async handleTextCommand(request: BotRequest): Promise<void> {

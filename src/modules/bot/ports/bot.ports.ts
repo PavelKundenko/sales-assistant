@@ -33,6 +33,7 @@ export interface UsersServicePort {
   createOrGet(telegramId: string): Promise<[UserEntity, created: boolean]>;
   setSteamId(userId: string, steamId: string): Promise<void>;
   getUsersWithSteamId(): Promise<UserEntity[]>;
+  findAllActive(): Promise<UserEntity[]>;
 }
 
 export interface SubscriptionsServicePort {

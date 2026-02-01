@@ -53,4 +53,8 @@ export class UsersService {
   async getUsersWithSteamId(): Promise<UserEntity[]> {
     return this.repository.find({ where: { steamId: Not(IsNull()) } });
   }
+
+  async findAllActive(): Promise<UserEntity[]> {
+    return this.repository.find({ where: { status: UserStatus.ACTIVE } });
+  }
 }

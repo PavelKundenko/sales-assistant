@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Logger } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { telegramConfig } from '../../../configuration';
 import { BotService } from './bot.service';
 import {
   BOT_SALES_MESSAGE_BUILDER,
@@ -57,6 +59,7 @@ describe('BotService', () => {
       createOrGet: jest.fn(),
       setSteamId: jest.fn(),
       getUsersWithSteamId: jest.fn(),
+      findAllActive: jest.fn(),
     };
 
     subscriptionsService = {
@@ -101,6 +104,13 @@ describe('BotService', () => {
         { provide: BOT_SUBSCRIPTIONS_SERVICE, useValue: subscriptionsService },
         { provide: BotContextService, useValue: contextService },
         { provide: BotMessages, useValue: messages },
+        {
+          provide: telegramConfig.KEY,
+          useValue: {
+            botToken: 'token',
+            adminId: 123,
+          } as ConfigType<typeof telegramConfig>,
+        },
       ],
     }).compile();
 
@@ -212,6 +222,39 @@ describe('BotService', () => {
 
       expect(subscriptionsService.deactivate as jest.Mock).toHaveBeenCalledWith('s1');
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Unsubscribed', undefined);
+    });
+  });
+
+  describe('handlePostCommand', () => {
+    it('should send broadcast message to all active users', async () => {
+      const mockUsers = [
+        { telegramId: '111', status: 'ACTIVE' },
+        { telegramId: '222', status: 'ACTIVE' },
+      ] as UserEntity[];
+
+      usersService.findAllActive.mockResolvedValue(mockUsers);
+      messenger.sendMessage.mockResolvedValue();
+
+      await service.handlePostCommand({ chatId: 123, text: '/post Hello World' } as BotRequest);
+
+      expect(usersService.findAllActive).toHaveBeenCalled();
+      expect(messenger.sendMessage).toHaveBeenCalledWith(111, 'Hello World');
+      expect(messenger.sendMessage).toHaveBeenCalledWith(222, 'Hello World');
+      expect(messenger.sendMessage).toHaveBeenCalledWith(123, 'Message sent to 2 active users.');
+    });
+
+    it('should ignore if not admin', async () => {
+      await service.handlePostCommand({ chatId: 999, text: '/post Hello' } as BotRequest);
+
+      expect(usersService.findAllActive).not.toHaveBeenCalled();
+      expect(messenger.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should prompt for message if empty', async () => {
+      await service.handlePostCommand({ chatId: 123, text: '/post   ' } as BotRequest);
+
+      expect(messenger.sendMessage).toHaveBeenCalledWith(123, 'Please provide a message to send.');
+      expect(usersService.findAllActive).not.toHaveBeenCalled();
     });
   });
 
