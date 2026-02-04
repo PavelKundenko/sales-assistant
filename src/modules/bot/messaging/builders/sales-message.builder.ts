@@ -1,14 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { SteamSaleDto } from '../../../steam/dto/steam-sale.dto';
-import type { BotMediaItem } from '../../core/bot.types';
+import type { BotMessageSequence } from '../../core/bot.types';
 import { SteamMessageBuilder, type SteamMessageBuilderOptions } from './steam-message.builder';
 
-export type SalesMediaGroup = BotMediaItem[];
 type SalesMessageBuilderOptions = SteamMessageBuilderOptions & { limit?: number };
 
 @Injectable()
-export class SalesMessageBuilder extends SteamMessageBuilder<SteamSaleDto[], SalesMediaGroup> {
-  build(sales: SteamSaleDto[], options: SalesMessageBuilderOptions = {}): SalesMediaGroup {
+export class SalesMessageBuilder extends SteamMessageBuilder<SteamSaleDto[], BotMessageSequence> {
+  build(sales: SteamSaleDto[], options: SalesMessageBuilderOptions = {}): BotMessageSequence {
     if (sales.length === 0) {
       throw new Error('Sales collection is empty');
     }
@@ -37,27 +36,30 @@ export class SalesMessageBuilder extends SteamMessageBuilder<SteamSaleDto[], Sal
 
       const originalPrice = this.formatPrice(game.originalPrice);
       const finalPrice = this.formatPrice(game.finalPrice);
+      const platformsLine = this.formatPlatforms(game);
 
       const storeUrl = this.sanitizeUrl(game.storeUrl);
       const title = storeUrl ? `<a href="${this.escapeHtml(storeUrl)}">${name}</a>` : name;
 
-      captionLines.push(title, `💰 Знижка ${discountPercent}`, `Ціна: <s>${originalPrice}</s> ${finalPrice}`, '');
+      captionLines.push(
+        title,
+        `💰 Знижка ${discountPercent}`,
+        `Ціна: <s>${originalPrice}</s> ${finalPrice}`,
+        platformsLine,
+        '',
+      );
     }
 
-    const mediaGroup = salesWithImages.map(({ imageUrl }, index): BotMediaItem => {
-      const mediaItem: BotMediaItem = {
-        type: 'photo',
-        media: imageUrl,
-      };
+    const mediaGroup = salesWithImages.map(({ imageUrl }) => ({
+      type: 'photo' as const,
+      media: imageUrl,
+    }));
 
-      if (index === 0) {
-        mediaItem.caption = captionLines.join('\n').trim();
-        mediaItem.parseMode = 'HTML';
-      }
+    const text = captionLines.join('\n').trim();
 
-      return mediaItem;
-    });
-
-    return mediaGroup;
+    return [
+      { type: 'mediaGroup', media: mediaGroup },
+      { type: 'text', text, options: { parseMode: 'HTML' } },
+    ];
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SteamAppDetailsResponse, SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
 import { SteamSaleDto } from './dto/steam-sale.dto';
 import { SteamWishlistItemDto } from './dto/steam-wishlist-item.dto';
+import { Platform } from '../users/entities/user-preferences.entity';
 
 @Injectable()
 export class SteamSalesAdapter {
@@ -24,6 +25,11 @@ export class SteamSalesAdapter {
             macAvailable: game.mac_available,
             windowsAvailable: game.windows_available,
             linuxAvailable: game.linux_available,
+            platforms: this.resolvePlatforms({
+              windowsAvailable: game.windows_available,
+              macAvailable: game.mac_available,
+              linuxAvailable: game.linux_available,
+            }),
           }),
         );
       }
@@ -48,6 +54,9 @@ export class SteamSalesAdapter {
         const finalPrice = price?.final ? price.final / 100 : originalPrice;
         const resolvedAppId = Number.isNaN(parsedAppId) ? 0 : parsedAppId;
         const headerImage = details.header_image ?? (resolvedAppId ? this.buildHeaderImageUrl(resolvedAppId) : '');
+        const windowsAvailable = details.platforms?.windows ?? false;
+        const macAvailable = details.platforms?.mac ?? false;
+        const linuxAvailable = details.platforms?.linux ?? false;
 
         games.push(
           new SteamSaleDto({
@@ -58,9 +67,10 @@ export class SteamSalesAdapter {
             discountPercent: price?.discount_percent ?? 0,
             headerImage,
             storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
-            macAvailable: details.platforms?.mac ?? false,
-            windowsAvailable: details.platforms?.windows ?? false,
-            linuxAvailable: details.platforms?.linux ?? false,
+            macAvailable,
+            windowsAvailable,
+            linuxAvailable,
+            platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
           }),
         );
       }
@@ -86,6 +96,9 @@ export class SteamSalesAdapter {
         const originalPrice = price?.initial ? price.initial / 100 : null;
         const finalPrice = price?.final ? price.final / 100 : originalPrice;
         const discountPercent = price?.discount_percent ?? null;
+        const windowsAvailable = details.platforms?.windows ?? false;
+        const macAvailable = details.platforms?.mac ?? false;
+        const linuxAvailable = details.platforms?.linux ?? false;
 
         games.push(
           new SteamWishlistItemDto({
@@ -97,9 +110,10 @@ export class SteamSalesAdapter {
             discountPercent,
             headerImage,
             storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
-            macAvailable: details.platforms?.mac ?? false,
-            windowsAvailable: details.platforms?.windows ?? false,
-            linuxAvailable: details.platforms?.linux ?? false,
+            macAvailable,
+            windowsAvailable,
+            linuxAvailable,
+            platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
           }),
         );
       }
@@ -119,5 +133,27 @@ export class SteamSalesAdapter {
 
       return discountB - discountA;
     });
+  }
+
+  private resolvePlatforms(availability: {
+    windowsAvailable: boolean;
+    macAvailable: boolean;
+    linuxAvailable: boolean;
+  }): Platform[] {
+    const platforms: Platform[] = [];
+
+    if (availability.windowsAvailable) {
+      platforms.push(Platform.PC);
+    }
+
+    if (availability.macAvailable) {
+      platforms.push(Platform.MAC);
+    }
+
+    if (availability.linuxAvailable) {
+      platforms.push(Platform.STEAM_DECK);
+    }
+
+    return platforms;
   }
 }

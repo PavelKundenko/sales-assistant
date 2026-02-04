@@ -37,6 +37,7 @@ describe('BotService', () => {
     messenger = {
       sendMessage: jest.fn(),
       sendMediaGroup: jest.fn(),
+      sendMessageSequence: jest.fn(),
       setMyCommands: jest.fn(),
     } as unknown as jest.Mocked<BotMessenger>;
 
@@ -160,17 +161,20 @@ describe('BotService', () => {
   describe('handleSalesCommand', () => {
     it('should send sales media group', async () => {
       const mockSales = [{ name: 'Game 1', windowsAvailable: true }] as any;
-      const mockMedia = [{ type: 'photo', media: 'img' }] as any;
+      const mockSequence = [
+        { type: 'mediaGroup', media: [{ type: 'photo', media: 'img' }] },
+        { type: 'text', text: 'text' },
+      ] as any;
 
       messages.salesLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getCurrentSales.mockResolvedValue(mockSales);
-      salesMessageBuilder.build.mockReturnValue(mockMedia);
+      salesMessageBuilder.build.mockReturnValue(mockSequence);
 
       await service.handleSalesCommand(mockRequest);
 
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Loading', undefined);
       expect(steamService.getCurrentSales as jest.Mock).toHaveBeenCalled();
-      expect(messenger.sendMediaGroup as jest.Mock).toHaveBeenCalledWith(123, mockMedia);
+      expect(messenger.sendMessageSequence as jest.Mock).toHaveBeenCalledWith(123, mockSequence);
     });
 
     it('should handle empty sales', async () => {
@@ -284,17 +288,20 @@ describe('BotService', () => {
   describe('handleWishlistCommand', () => {
     it('should send wishlist media group', async () => {
       const mockItems = [{ name: 'Item 1', windowsAvailable: true }] as any;
-      const mockMedia = [{ type: 'photo', media: 'img' }] as any;
+      const mockSequence = [
+        { type: 'mediaGroup', media: [{ type: 'photo', media: 'img' }] },
+        { type: 'text', text: 'text' },
+      ] as any;
 
       contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);
       messages.wishlistLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getWishlistItems.mockResolvedValue(mockItems);
-      wishlistMessageBuilder.build.mockReturnValue(mockMedia);
+      wishlistMessageBuilder.build.mockReturnValue(mockSequence);
 
       await service.handleWishlistCommand(mockRequest);
 
       expect(steamService.getWishlistItems as jest.Mock).toHaveBeenCalledWith('steam-id');
-      expect(messenger.sendMediaGroup as jest.Mock).toHaveBeenCalledWith(123, mockMedia);
+      expect(messenger.sendMessageSequence as jest.Mock).toHaveBeenCalledWith(123, mockSequence);
     });
 
     it('should handle empty wishlist', async () => {
@@ -357,7 +364,8 @@ describe('BotService', () => {
         { command: 'start', description: 'Початок роботи' },
         { command: 'sales', description: '🔥 Актуальні знижки' },
         { command: 'wishlist', description: '📋 Список бажаного' },
-        { command: 'setup_wishlist', description: '⚙️ Налаштувати Steam ID' },
+        { command: 'setup_wishlist', description: "🔗 Прив'язати Steam ID" },
+        { command: 'settings', description: '⚙️ Налаштування' },
         { command: 'help', description: 'ℹ️ Довідка' },
       ]);
     });

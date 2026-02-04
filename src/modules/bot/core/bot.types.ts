@@ -20,9 +20,23 @@ export type BotMediaItem = {
   parseMode?: 'HTML';
 };
 
+export type BotMessage =
+  | {
+      type: 'text';
+      text: string;
+      options?: BotMessageOptions;
+    }
+  | {
+      type: 'mediaGroup';
+      media: BotMediaItem[];
+    };
+
+export type BotMessageSequence = BotMessage[];
+
 export interface BotMessenger {
   sendMessage(chatId: BotChatId, text: string, options?: BotMessageOptions): Promise<void>;
   sendMediaGroup(chatId: BotChatId, media: BotMediaItem[]): Promise<void>;
+  sendMessageSequence(chatId: BotChatId, sequence: BotMessageSequence): Promise<void>;
   setMyCommands(commands: BotCommand[]): Promise<void>;
 }
 

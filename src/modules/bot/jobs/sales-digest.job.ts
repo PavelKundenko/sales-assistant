@@ -78,11 +78,11 @@ export class SalesDigestJob {
             continue;
           }
 
-          const mediaGroup = this.salesMessageBuilder.build(filteredSales, {
+          const messageSequence = this.salesMessageBuilder.build(filteredSales, {
             intro: `🔥 Актуальні знижки у Steam на ${new Date().toLocaleDateString()}:\n`,
           });
 
-          await this.messenger.sendMediaGroup(telegramId, mediaGroup);
+          await this.messenger.sendMessageSequence(telegramId, messageSequence);
           await this.usersService.updateSalesReceivedAt(user.id);
 
           this.logger.log(`Sent sales digest to user ${user.id}`);

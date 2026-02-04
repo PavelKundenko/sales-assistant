@@ -175,7 +175,7 @@ describe('SteamGateway', () => {
       expect(result).toEqual(response);
       // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(httpService.get).toHaveBeenCalledWith(`${config.storeUrl}/appdetails`, {
-        params: { appids: appId, cc: 'UA', filters: 'basic,price_overview' },
+        params: { appids: appId, cc: 'UA', filters: 'basic,price_overview,platforms' },
       });
     });
 

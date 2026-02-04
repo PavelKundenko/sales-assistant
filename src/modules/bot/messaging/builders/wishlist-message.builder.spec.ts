@@ -1,9 +1,26 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WishlistMessageBuilder } from './wishlist-message.builder';
 import { SteamWishlistItemDto } from '../../../steam/dto/steam-wishlist-item.dto';
+import { Platform } from '../../../users/entities/user-preferences.entity';
 
 describe('WishlistMessageBuilder', () => {
   let builder: WishlistMessageBuilder;
+
+  const expectMediaGroup = (sequence: ReturnType<WishlistMessageBuilder['build']>) => {
+    const message = sequence[0];
+    if (message?.type !== 'mediaGroup') {
+      throw new Error('Expected mediaGroup message');
+    }
+    return message;
+  };
+
+  const expectTextMessage = (sequence: ReturnType<WishlistMessageBuilder['build']>) => {
+    const message = sequence[1];
+    if (message?.type !== 'text') {
+      throw new Error('Expected text message');
+    }
+    return message;
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -23,6 +40,7 @@ describe('WishlistMessageBuilder', () => {
       discountPercent: 20,
       headerImage: 'https://example.com/image1.jpg',
       storeUrl: 'https://store.steampowered.com/app/10',
+      platforms: [Platform.PC, Platform.MAC],
     } as SteamWishlistItemDto,
     {
       appId: 20,
@@ -33,6 +51,7 @@ describe('WishlistMessageBuilder', () => {
       discountPercent: 0,
       headerImage: 'https://example.com/image2.jpg',
       storeUrl: 'https://store.steampowered.com/app/20',
+      platforms: [Platform.PC],
     } as SteamWishlistItemDto,
   ];
 
@@ -41,29 +60,32 @@ describe('WishlistMessageBuilder', () => {
   });
 
   describe('build', () => {
-    it('should correctly format a wishlist into a media group', () => {
+    it('should correctly format a wishlist into a message sequence', () => {
       const result = builder.build(mockWishlist);
 
       expect(result).toHaveLength(2);
-      expect(result[0].type).toBe('photo');
-      expect(result[0].media).toBe(mockWishlist[0].headerImage);
-      expect(result[0].parseMode).toBe('HTML');
-      expect(result[0].caption).toContain('Counter-Strike');
-      expect(result[0].caption).toContain('💰 Знижка 20%');
-      expect(result[0].caption).toContain('₴80.00');
-      expect(result[0].caption).toContain('Team Fortress Classic');
-      expect(result[0].caption).toContain('Ціна: ₴50.00');
+      const mediaMessage = expectMediaGroup(result);
+      const textMessage = expectTextMessage(result);
 
-      expect(result[1].type).toBe('photo');
-      expect(result[1].media).toBe(mockWishlist[1].headerImage);
-      expect(result[1].caption).toBeUndefined(); // Only the first item should have a caption
+      expect(mediaMessage.media).toHaveLength(2);
+      expect(mediaMessage.media[0].media).toBe(mockWishlist[0].headerImage);
+      expect(mediaMessage.media[1].media).toBe(mockWishlist[1].headerImage);
+
+      expect(textMessage.options?.parseMode).toBe('HTML');
+      expect(textMessage.text).toContain('Counter-Strike');
+      expect(textMessage.text).toContain('💰 Знижка 20%');
+      expect(textMessage.text).toContain('₴80.00');
+      expect(textMessage.text).toContain('Платформи: PC, Mac');
+      expect(textMessage.text).toContain('Team Fortress Classic');
+      expect(textMessage.text).toContain('Ціна: ₴50.00');
     });
 
     it('should include the intro caption if provided', () => {
       const intro = 'Your wishlist items:';
       const result = builder.build(mockWishlist, { intro });
 
-      expect(result[0].caption).toContain(intro);
+      const textMessage = expectTextMessage(result);
+      expect(textMessage.text).toContain(intro);
     });
 
     it('should throw an error if the wishlist collection is empty', () => {
@@ -84,7 +106,8 @@ describe('WishlistMessageBuilder', () => {
       ];
       const result = builder.build(itemsWithOneInvalid);
 
-      expect(result).toHaveLength(2);
+      const mediaMessage = expectMediaGroup(result);
+      expect(mediaMessage.media).toHaveLength(2);
     });
 
     it('should correctly handle items without discounts in the text block', () => {
@@ -95,9 +118,11 @@ describe('WishlistMessageBuilder', () => {
       ] as SteamWishlistItemDto[];
 
       const result = builder.build(items);
-      expect(result[0].caption).toContain('Team Fortress Classic');
-      expect(result[0].caption).toContain('Ціна: ₴50.00');
-      expect(result[0].caption).not.toContain('💰 Знижка');
+      const textMessage = expectTextMessage(result);
+      expect(textMessage.text).toContain('Team Fortress Classic');
+      expect(textMessage.text).toContain('Ціна: ₴50.00');
+      expect(textMessage.text).toContain('Платформи: PC');
+      expect(textMessage.text).not.toContain('💰 Знижка');
     });
   });
 });

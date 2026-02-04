@@ -56,11 +56,11 @@ export class WishlistDigestJob {
           continue;
         }
 
-        const mediaGroup = this.wishlistMessageBuilder.build(wishlistItemsOnSale, {
+        const messageSequence = this.wishlistMessageBuilder.build(wishlistItemsOnSale, {
           intro: 'Ігри з вашого списку бажаного Steam на знижці: \n',
         });
 
-        await this.messenger.sendMediaGroup(user.telegramId, mediaGroup);
+        await this.messenger.sendMessageSequence(user.telegramId, messageSequence);
         await this.usersService.updateWishlistReceivedAt(user.id);
 
         this.logger.log(`Sent wishlist digest to user ${user.id}`);

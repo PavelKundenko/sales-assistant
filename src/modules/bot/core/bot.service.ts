@@ -116,11 +116,11 @@ export class BotService implements OnApplicationBootstrap {
         return;
       }
 
-      const mediaGroup = this.salesMessageBuilder.build(filteredSales, {
+      const messageSequence = this.salesMessageBuilder.build(filteredSales, {
         intro: '🔥 Актуальні знижки у Steam:\n',
       });
 
-      await this.messenger.sendMediaGroup(chatId, mediaGroup);
+      await this.messenger.sendMessageSequence(chatId, messageSequence);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       const trace = error instanceof Error ? error.stack : undefined;
@@ -344,11 +344,11 @@ export class BotService implements OnApplicationBootstrap {
         return;
       }
 
-      const mediaGroup = this.wishlistMessageBuilder.build(items, {
+      const messageSequence = this.wishlistMessageBuilder.build(items, {
         intro: '📋 Ваш список бажаного:\n',
       });
 
-      await this.messenger.sendMediaGroup(chatId, mediaGroup);
+      await this.messenger.sendMessageSequence(chatId, messageSequence);
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
       const trace = error instanceof Error ? error.stack : undefined;

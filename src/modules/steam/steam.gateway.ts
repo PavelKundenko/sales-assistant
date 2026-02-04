@@ -84,7 +84,7 @@ export class SteamGateway {
   async fetchAppDetails(
     appId: number,
     countryCode = 'UA',
-    filters = ['basic', 'price_overview'],
+    filters = ['basic', 'price_overview', 'platforms'],
   ): Promise<SteamAppDetailsResponse> {
     try {
       const { data } = await lastValueFrom(

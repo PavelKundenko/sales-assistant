@@ -1,4 +1,12 @@
+import { Platform } from '../../../users/entities/user-preferences.entity';
 import { MessageBuilder } from './message.builder';
+
+type PlatformAvailability = {
+  platforms?: Platform[] | null;
+  windowsAvailable?: boolean;
+  macAvailable?: boolean;
+  linuxAvailable?: boolean;
+};
 
 export type SteamMessageBuilderOptions = {
   intro?: string;
@@ -49,5 +57,47 @@ export abstract class SteamMessageBuilder<TInput extends unknown[], TOutput> ext
     }
 
     return `₴${price.toFixed(2)}`;
+  }
+
+  protected formatPlatforms(entry: PlatformAvailability): string {
+    const platforms = Array.from(new Set(this.resolvePlatforms(entry)));
+    const label = platforms.length ? platforms.map((platform) => this.formatPlatformLabel(platform)).join(', ') : 'Н/Д';
+
+    return `Платформи: ${label}`;
+  }
+
+  protected resolvePlatforms(entry: PlatformAvailability): Platform[] {
+    if (Array.isArray(entry.platforms) && entry.platforms.length > 0) {
+      return entry.platforms;
+    }
+
+    const platforms: Platform[] = [];
+
+    if (entry.windowsAvailable) {
+      platforms.push(Platform.PC);
+    }
+
+    if (entry.macAvailable) {
+      platforms.push(Platform.MAC);
+    }
+
+    if (entry.linuxAvailable) {
+      platforms.push(Platform.STEAM_DECK);
+    }
+
+    return platforms;
+  }
+
+  protected formatPlatformLabel(platform: Platform): string {
+    switch (platform) {
+      case Platform.PC:
+        return 'PC';
+      case Platform.MAC:
+        return 'Mac';
+      case Platform.STEAM_DECK:
+        return 'Steam Deck';
+      default:
+        return platform;
+    }
   }
 }
