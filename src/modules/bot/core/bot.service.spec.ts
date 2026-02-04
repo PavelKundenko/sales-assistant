@@ -60,6 +60,10 @@ describe('BotService', () => {
       setSteamId: jest.fn(),
       getUsersWithSteamId: jest.fn(),
       findAllActive: jest.fn(),
+      updateSalesReceivedAt: jest.fn(),
+      updateWishlistReceivedAt: jest.fn(),
+      updateUpdateFrequency: jest.fn(),
+      updatePlatforms: jest.fn(),
     };
 
     subscriptionsService = {
@@ -70,27 +74,34 @@ describe('BotService', () => {
     };
 
     contextService = {
-      getSubscriptionContext: jest.fn(),
+      getSubscriptionContext: jest.fn().mockResolvedValue({ user: mockUser, activeSubscription: null }),
     } as unknown as jest.Mocked<BotContextService>;
 
     messages = {
-      startMessage: jest.fn(),
-      salesLoadingMessage: jest.fn(),
-      salesEmptyMessage: jest.fn(),
-      salesErrorMessage: jest.fn(),
-      helpMessage: jest.fn(),
-      subscribeMessage: jest.fn(),
-      unsubscribeMessage: jest.fn(),
-      wishlistLoadingMessage: jest.fn(),
-      wishlistEmptyMessage: jest.fn(),
-      wishlistErrorMessage: jest.fn(),
-      wishlistSummaryOptions: jest.fn(),
-      steamIdGuideMessage: jest.fn(),
-      steamIdAlreadyConnectedMessage: jest.fn(),
-      steamIdConnectedMessage: jest.fn(),
-      steamIdNotFoundMessage: jest.fn(),
-      startRequiredMessage: jest.fn(),
-      unknownTextMessage: jest.fn(),
+      startMessage: jest.fn().mockReturnValue({ text: 'start' }),
+      salesLoadingMessage: jest.fn().mockReturnValue({ text: 'loading' }),
+      salesEmptyMessage: jest.fn().mockReturnValue({ text: 'empty' }),
+      salesErrorMessage: jest.fn().mockReturnValue({ text: 'error' }),
+      helpMessage: jest.fn().mockReturnValue({ text: 'help' }),
+      subscribeMessage: jest.fn().mockReturnValue({ text: 'subscribe' }),
+      unsubscribeMessage: jest.fn().mockReturnValue({ text: 'unsubscribe' }),
+      wishlistLoadingMessage: jest.fn().mockReturnValue({ text: 'loading' }),
+      wishlistEmptyMessage: jest.fn().mockReturnValue({ text: 'empty' }),
+      wishlistErrorMessage: jest.fn().mockReturnValue({ text: 'error' }),
+      wishlistSummaryOptions: jest.fn().mockReturnValue({ text: 'summary' }),
+      steamIdGuideMessage: jest.fn().mockReturnValue({ text: 'guide' }),
+      steamIdAlreadyConnectedMessage: jest.fn().mockReturnValue({ text: 'already-connected' }),
+      steamIdConnectedMessage: jest.fn().mockReturnValue({ text: 'connected' }),
+      steamIdNotFoundMessage: jest.fn().mockReturnValue({ text: 'not-found' }),
+      startRequiredMessage: jest.fn().mockReturnValue({ text: 'start-required' }),
+      unknownTextMessage: jest.fn().mockReturnValue({ text: 'unknown' }),
+      settingsMenuMessage: jest.fn().mockReturnValue({ text: 'settings-menu' }),
+      settingsFrequencyMessage: jest.fn().mockReturnValue({ text: 'settings-frequency' }),
+      settingsFrequencyUpdatedMessage: jest.fn().mockReturnValue({ text: 'settings-frequency-updated' }),
+      settingsFrequencyInvalidMessage: jest.fn().mockReturnValue({ text: 'settings-frequency-invalid' }),
+      settingsPlatformsMessage: jest.fn().mockReturnValue({ text: 'settings-platforms' }),
+      settingsPlatformsSavedMessage: jest.fn().mockReturnValue({ text: 'settings-platforms-saved' }),
+      settingsClosedMessage: jest.fn().mockReturnValue({ text: 'settings-closed' }),
     } as unknown as jest.Mocked<BotMessages>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -148,7 +159,7 @@ describe('BotService', () => {
 
   describe('handleSalesCommand', () => {
     it('should send sales media group', async () => {
-      const mockSales = [{ name: 'Game 1' }] as any;
+      const mockSales = [{ name: 'Game 1', windowsAvailable: true }] as any;
       const mockMedia = [{ type: 'photo', media: 'img' }] as any;
 
       messages.salesLoadingMessage.mockReturnValue({ text: 'Loading' });
@@ -192,6 +203,18 @@ describe('BotService', () => {
 
       expect(messages.helpMessage as jest.Mock).toHaveBeenCalledWith(true, true);
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Help', undefined);
+    });
+  });
+
+  describe('handleSettingsCommand', () => {
+    it('should send settings menu message', async () => {
+      contextService.getSubscriptionContext.mockResolvedValue({ user: mockUser, activeSubscription: null });
+      messages.settingsMenuMessage.mockReturnValue({ text: 'Settings' });
+
+      await service.handleSettingsCommand(mockRequest);
+
+      expect(messages.settingsMenuMessage as jest.Mock).toHaveBeenCalled();
+      expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Settings', undefined);
     });
   });
 
@@ -260,7 +283,7 @@ describe('BotService', () => {
 
   describe('handleWishlistCommand', () => {
     it('should send wishlist media group', async () => {
-      const mockItems = [{ name: 'Item 1' }] as any;
+      const mockItems = [{ name: 'Item 1', windowsAvailable: true }] as any;
       const mockMedia = [{ type: 'photo', media: 'img' }] as any;
 
       contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);

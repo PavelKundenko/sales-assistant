@@ -17,10 +17,22 @@ import { UserEntity } from '../../users/entities/user.entity';
 import { BOT_MESSENGER, type BotMessenger, type BotRequest } from './bot.types';
 import { BotContextService } from './bot-context.service';
 import { BotMessages, type BotReply } from '../messaging/bot.messages';
+import { filterByPlatform } from '../../steam/utils/platform-filter.util';
+import { Platform, UserPreferencesEntity } from '../../users/entities/user-preferences.entity';
+import {
+  SETTINGS_BACK_BUTTON_LABEL,
+  SETTINGS_DONE_BUTTON_LABEL,
+  SETTINGS_FREQUENCY_BUTTON_LABEL,
+  SETTINGS_PLATFORMS_BUTTON_LABEL,
+} from './bot.constants';
+
+type SettingsStep = 'menu' | 'frequency' | 'platforms';
 
 @Injectable()
 export class BotService implements OnApplicationBootstrap {
   private readonly logger = new Logger(BotService.name);
+  private readonly settingsSessions = new Map<string, SettingsStep>();
+  private readonly defaultPlatforms = [Platform.PC, Platform.MAC, Platform.STEAM_DECK];
 
   constructor(
     @Inject(BOT_MESSENGER)
@@ -46,12 +58,14 @@ export class BotService implements OnApplicationBootstrap {
       { command: 'start', description: 'Початок роботи' },
       { command: 'sales', description: '🔥 Актуальні знижки' },
       { command: 'wishlist', description: '📋 Список бажаного' },
-      { command: 'setup_wishlist', description: '⚙️ Налаштувати Steam ID' },
+      { command: 'setup_wishlist', description: "🔗 Прив'язати Steam ID" },
+      { command: 'settings', description: '⚙️ Налаштування' },
       { command: 'help', description: 'ℹ️ Довідка' },
     ]);
   }
 
   async handleStart(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const telegramId = request.telegramUserId;
     const chatId = request.chatId;
 
@@ -60,7 +74,9 @@ export class BotService implements OnApplicationBootstrap {
     }
 
     const [user, created] = await this.usersService.createOrGet(telegramId.toString());
+
     const activeSubscriptions = await this.subscriptionsService.findActiveByUser(user.id);
+
     const isSubscribed = activeSubscriptions.some((subscription) => subscription.type === SubscriptionType.STEAM);
 
     const reply = this.messages.startMessage(created, isSubscribed, Boolean(user.steamId));
@@ -69,6 +85,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleSalesCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const chatId = request.chatId;
     const telegramId = request.telegramUserId;
 
@@ -79,6 +96,8 @@ export class BotService implements OnApplicationBootstrap {
     await this.sendReply(chatId, this.messages.salesLoadingMessage());
 
     try {
+      const { user } = await this.contextService.getSubscriptionContext(telegramId ?? undefined);
+
       const sales = await this.steamService.getCurrentSales();
 
       if (sales.length === 0) {
@@ -87,7 +106,17 @@ export class BotService implements OnApplicationBootstrap {
         return;
       }
 
-      const mediaGroup = this.salesMessageBuilder.build(sales, {
+      const platforms = user?.preferences?.platform ?? [];
+
+      const filteredSales = filterByPlatform(sales, platforms);
+
+      if (filteredSales.length === 0) {
+        await this.sendReply(chatId, this.messages.salesEmptyMessage());
+
+        return;
+      }
+
+      const mediaGroup = this.salesMessageBuilder.build(filteredSales, {
         intro: '🔥 Актуальні знижки у Steam:\n',
       });
 
@@ -103,6 +132,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleHelp(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const chatId = request.chatId;
 
     if (!chatId) {
@@ -119,6 +149,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleSubscribeCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const context = await this.validateRequest(request);
 
     if (!context) {
@@ -129,6 +160,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleUnsubscribeCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const context = await this.validateRequest(request);
 
     if (!context) {
@@ -139,6 +171,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleWishlistCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const context = await this.validateRequest(request);
 
     if (!context) {
@@ -151,10 +184,11 @@ export class BotService implements OnApplicationBootstrap {
       return;
     }
 
-    await this.handleWishlist(context.chatId, context.user.steamId);
+    await this.handleWishlist(context.chatId, context.user);
   }
 
   async handleConnectWishlistCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const context = await this.validateRequest(request);
 
     if (!context) {
@@ -171,6 +205,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleSetupWishlistCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const context = await this.validateRequest(request);
 
     if (!context) {
@@ -198,6 +233,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handlePostCommand(request: BotRequest): Promise<void> {
+    this.clearSettingsSession(request.telegramUserId);
     const chatId = request.chatId;
 
     if (!chatId || !request.text) {
@@ -242,6 +278,10 @@ export class BotService implements OnApplicationBootstrap {
 
     const { chatId, user, activeSubscription } = context;
 
+    if (await this.handleSettingsFlow(request, context)) {
+      return;
+    }
+
     if (!user.steamId) {
       const steamId = this.parseSteamId(request.text);
 
@@ -253,6 +293,18 @@ export class BotService implements OnApplicationBootstrap {
     }
 
     await this.sendUnknownText(chatId, Boolean(activeSubscription), Boolean(user.steamId));
+  }
+
+  async handleSettingsCommand(request: BotRequest): Promise<void> {
+    const context = await this.validateRequest(request);
+
+    if (!context) {
+      return;
+    }
+
+    this.setSettingsStep(request.telegramUserId, 'menu');
+
+    await this.sendReply(context.chatId, this.messages.settingsMenuMessage());
   }
 
   async handleSubscribe(
@@ -279,7 +331,8 @@ export class BotService implements OnApplicationBootstrap {
     await this.sendReply(chatId, this.messages.unsubscribeMessage(hasSteamId));
   }
 
-  private async handleWishlist(chatId: NonNullable<BotRequest['chatId']>, steamId: string): Promise<void> {
+  private async handleWishlist(chatId: NonNullable<BotRequest['chatId']>, user: UserEntity): Promise<void> {
+    const steamId = user.steamId!;
     await this.sendReply(chatId, this.messages.wishlistLoadingMessage());
 
     try {
@@ -335,6 +388,203 @@ export class BotService implements OnApplicationBootstrap {
 
   private async sendReply(chatId: NonNullable<BotRequest['chatId']>, reply: BotReply): Promise<void> {
     await this.messenger.sendMessage(chatId, reply.text, reply.options);
+  }
+
+  private async handleSettingsFlow(
+    request: BotRequest,
+    context: {
+      chatId: NonNullable<BotRequest['chatId']>;
+      user: UserEntity;
+      activeSubscription: SubscriptionEntity | null;
+    },
+  ): Promise<boolean> {
+    const key = this.getSettingsKey(request.telegramUserId);
+    const step = key ? this.settingsSessions.get(key) : null;
+
+    if (!step || !request.text) {
+      return false;
+    }
+
+    const text = request.text;
+
+    if (step === 'menu') {
+      if (text === SETTINGS_FREQUENCY_BUTTON_LABEL) {
+        this.setSettingsStep(request.telegramUserId, 'frequency');
+        const currentFrequency = this.getUserFrequency(context.user);
+
+        await this.sendReply(context.chatId, this.messages.settingsFrequencyMessage(currentFrequency));
+
+        return true;
+      }
+
+      if (text === SETTINGS_PLATFORMS_BUTTON_LABEL) {
+        this.setSettingsStep(request.telegramUserId, 'platforms');
+        const platforms = this.getUserPlatforms(context.user);
+
+        await this.sendReply(context.chatId, this.messages.settingsPlatformsMessage(platforms));
+
+        return true;
+      }
+
+      if (text === SETTINGS_BACK_BUTTON_LABEL) {
+        this.clearSettingsSession(request.telegramUserId);
+
+        await this.sendReply(
+          context.chatId,
+          this.messages.settingsClosedMessage(Boolean(context.activeSubscription), Boolean(context.user.steamId)),
+        );
+
+        return true;
+      }
+
+      await this.sendReply(context.chatId, this.messages.settingsMenuMessage());
+
+      return true;
+    }
+
+    if (step === 'frequency') {
+      if (text === SETTINGS_BACK_BUTTON_LABEL) {
+        this.setSettingsStep(request.telegramUserId, 'menu');
+        await this.sendReply(context.chatId, this.messages.settingsMenuMessage());
+
+        return true;
+      }
+
+      const frequency = Number.parseInt(text, 10);
+
+      if (!Number.isInteger(frequency) || frequency < 1 || frequency > 7) {
+        await this.sendReply(context.chatId, this.messages.settingsFrequencyInvalidMessage());
+
+        return true;
+      }
+
+      await this.usersService.updateUpdateFrequency(context.user.id, frequency);
+      this.applyFrequencyToUser(context.user, frequency);
+      this.setSettingsStep(request.telegramUserId, 'menu');
+
+      await this.sendReply(context.chatId, this.messages.settingsFrequencyUpdatedMessage(frequency));
+
+      return true;
+    }
+
+    if (step === 'platforms') {
+      if (text === SETTINGS_BACK_BUTTON_LABEL) {
+        this.setSettingsStep(request.telegramUserId, 'menu');
+        await this.sendReply(context.chatId, this.messages.settingsMenuMessage());
+
+        return true;
+      }
+
+      if (text === SETTINGS_DONE_BUTTON_LABEL) {
+        this.setSettingsStep(request.telegramUserId, 'menu');
+        await this.sendReply(context.chatId, this.messages.settingsPlatformsSavedMessage());
+
+        return true;
+      }
+
+      const platform = this.parsePlatformLabel(text);
+
+      if (!platform) {
+        const platforms = this.getUserPlatforms(context.user);
+        await this.sendReply(context.chatId, this.messages.settingsPlatformsMessage(platforms));
+
+        return true;
+      }
+
+      const currentPlatforms = this.getUserPlatforms(context.user);
+      const updatedPlatforms = currentPlatforms.includes(platform)
+        ? currentPlatforms.filter((item) => item !== platform)
+        : [...currentPlatforms, platform];
+
+      await this.usersService.updatePlatforms(context.user.id, updatedPlatforms);
+      this.applyPlatformsToUser(context.user, updatedPlatforms);
+
+      await this.sendReply(context.chatId, this.messages.settingsPlatformsMessage(updatedPlatforms));
+
+      return true;
+    }
+
+    return false;
+  }
+
+  private getSettingsKey(telegramUserId: number | null | undefined): string | null {
+    if (!telegramUserId) {
+      return null;
+    }
+
+    return telegramUserId.toString();
+  }
+
+  private setSettingsStep(telegramUserId: number | null | undefined, step: SettingsStep): void {
+    const key = this.getSettingsKey(telegramUserId);
+
+    if (!key) {
+      return;
+    }
+
+    this.settingsSessions.set(key, step);
+  }
+
+  private clearSettingsSession(telegramUserId: number | null | undefined): void {
+    const key = this.getSettingsKey(telegramUserId);
+
+    if (!key) {
+      return;
+    }
+
+    this.settingsSessions.delete(key);
+  }
+
+  private getUserPlatforms(user: UserEntity): Platform[] {
+    return user.preferences?.platform ?? this.defaultPlatforms;
+  }
+
+  private getUserFrequency(user: UserEntity): number {
+    return user.preferences?.salesUpdateFrequency ?? 1;
+  }
+
+  private applyPlatformsToUser(user: UserEntity, platforms: Platform[]): void {
+    if (!user.preferences) {
+      const preferences = new UserPreferencesEntity();
+      preferences.platform = platforms;
+      user.preferences = preferences;
+
+      return;
+    }
+
+    user.preferences.platform = platforms;
+  }
+
+  private applyFrequencyToUser(user: UserEntity, frequency: number): void {
+    if (!user.preferences) {
+      const preferences = new UserPreferencesEntity();
+      preferences.salesUpdateFrequency = frequency;
+      preferences.wishlistUpdateFrequency = frequency;
+      user.preferences = preferences;
+
+      return;
+    }
+
+    user.preferences.salesUpdateFrequency = frequency;
+    user.preferences.wishlistUpdateFrequency = frequency;
+  }
+
+  private parsePlatformLabel(text: string): Platform | null {
+    const normalized = text.toLowerCase();
+
+    if (normalized.includes('pc')) {
+      return Platform.PC;
+    }
+
+    if (normalized.includes('mac')) {
+      return Platform.MAC;
+    }
+
+    if (normalized.includes('steam deck')) {
+      return Platform.STEAM_DECK;
+    }
+
+    return null;
   }
 
   private async validateRequest(request: BotRequest): Promise<{

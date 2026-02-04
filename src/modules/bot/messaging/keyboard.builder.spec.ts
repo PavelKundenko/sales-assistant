@@ -7,6 +7,7 @@ import {
   UNSUBSCRIBE_BUTTON_LABEL,
   CONNECT_WISHLIST_BUTTON_LABEL,
   WISHLIST_BUTTON_LABEL,
+  SETTINGS_BUTTON_LABEL,
 } from '../core/bot.constants';
 
 describe('KeyboardBuilder', () => {
@@ -32,6 +33,7 @@ describe('KeyboardBuilder', () => {
         [START_BUTTON_LABEL],
         [SALES_BUTTON_LABEL, SUBSCRIBE_BUTTON_LABEL],
         [CONNECT_WISHLIST_BUTTON_LABEL],
+        [SETTINGS_BUTTON_LABEL],
       ]);
     });
 
@@ -42,6 +44,7 @@ describe('KeyboardBuilder', () => {
         [START_BUTTON_LABEL],
         [SALES_BUTTON_LABEL, UNSUBSCRIBE_BUTTON_LABEL],
         [CONNECT_WISHLIST_BUTTON_LABEL],
+        [SETTINGS_BUTTON_LABEL],
       ]);
     });
 
@@ -52,6 +55,7 @@ describe('KeyboardBuilder', () => {
         [START_BUTTON_LABEL],
         [SALES_BUTTON_LABEL, SUBSCRIBE_BUTTON_LABEL],
         [WISHLIST_BUTTON_LABEL],
+        [SETTINGS_BUTTON_LABEL],
       ]);
     });
 
@@ -62,6 +66,7 @@ describe('KeyboardBuilder', () => {
         [START_BUTTON_LABEL],
         [SALES_BUTTON_LABEL, UNSUBSCRIBE_BUTTON_LABEL],
         [WISHLIST_BUTTON_LABEL],
+        [SETTINGS_BUTTON_LABEL],
       ]);
     });
   });

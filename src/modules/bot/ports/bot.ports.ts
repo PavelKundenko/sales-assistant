@@ -4,6 +4,7 @@ import type { SteamPlayerResponse } from '../../steam/interfaces/steam-user.inte
 import type { SubscriptionEntity, SubscriptionType } from '../../subscriptions/entities/subscription.entity';
 import type { UserEntity } from '../../users/entities/user.entity';
 import type { BotKeyboard, BotMediaItem, BuildKeyboardParams } from '../core/bot.types';
+import type { Platform } from '../../users/entities/user-preferences.entity';
 
 export const BOT_STEAM_SERVICE = Symbol('BOT_STEAM_SERVICE');
 export const BOT_USERS_SERVICE = Symbol('BOT_USERS_SERVICE');
@@ -34,6 +35,10 @@ export interface UsersServicePort {
   setSteamId(userId: string, steamId: string): Promise<void>;
   getUsersWithSteamId(): Promise<UserEntity[]>;
   findAllActive(): Promise<UserEntity[]>;
+  updateSalesReceivedAt(userId: string): Promise<void>;
+  updateWishlistReceivedAt(userId: string): Promise<void>;
+  updateUpdateFrequency(userId: string, frequency: number): Promise<void>;
+  updatePlatforms(userId: string, platforms: Platform[]): Promise<void>;
 }
 
 export interface SubscriptionsServicePort {
@@ -53,4 +58,7 @@ export interface WishlistMessageBuilderPort {
 
 export interface KeyboardBuilderPort {
   buildMainKeyboard(params: BuildKeyboardParams): BotKeyboard;
+  buildSettingsMenuKeyboard(): BotKeyboard;
+  buildFrequencyKeyboard(): BotKeyboard;
+  buildPlatformsKeyboard(selected: Platform[]): BotKeyboard;
 }

@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { BOT_MESSENGER, type BotMessenger } from '../core/bot.types';
 import {
   BOT_STEAM_SERVICE,
@@ -9,8 +9,7 @@ import {
   type UsersServicePort,
   type WishlistMessageBuilderPort,
 } from 'src/modules/bot/ports/bot.ports';
-
-const CRON_EVERY_3_DAYS_AT_7PM = '0 19 * * *';
+import { shouldSendUpdate } from '../../steam/utils/platform-filter.util';
 
 @Injectable()
 export class WishlistDigestJob {
@@ -27,7 +26,7 @@ export class WishlistDigestJob {
     private readonly messenger: BotMessenger,
   ) {}
 
-  @Cron(CRON_EVERY_3_DAYS_AT_7PM)
+  @Cron(CronExpression.EVERY_DAY_AT_7PM)
   async handle(): Promise<void> {
     this.logger.log('Starting wishlist digest job');
 
@@ -35,6 +34,20 @@ export class WishlistDigestJob {
 
     for (const user of usersWithSteamId) {
       try {
+        const preferences = user.preferences;
+
+        if (!preferences) {
+          this.logger.warn(`User ${user.id} has no preferences, skipping`);
+          continue;
+        }
+
+        const shouldSend = shouldSendUpdate(preferences.wishlistUpdateReceivedAt, preferences.wishlistUpdateFrequency);
+
+        if (!shouldSend) {
+          this.logger.debug(`Skipping wishlist digest for user ${user.id} - frequency not met`);
+          continue;
+        }
+
         const wishlistItems = await this.steamService.getWishlistItems(user.steamId!);
 
         const wishlistItemsOnSale = wishlistItems.filter((item) => !!item.discountPercent && item.discountPercent > 0);
@@ -48,9 +61,11 @@ export class WishlistDigestJob {
         });
 
         await this.messenger.sendMediaGroup(user.telegramId, mediaGroup);
+        await this.usersService.updateWishlistReceivedAt(user.id);
+
+        this.logger.log(`Sent wishlist digest to user ${user.id}`);
       } catch (error) {
         this.logger.error(`Failed to fetch Steam wishlist for ${user.steamId}`, error);
-        throw error;
       }
     }
   }

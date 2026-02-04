@@ -6,6 +6,9 @@ export class SteamSaleDto {
   discountPercent!: number;
   headerImage!: string;
   storeUrl!: string;
+  macAvailable!: boolean;
+  windowsAvailable!: boolean;
+  linuxAvailable!: boolean;
 
   constructor(partial: Partial<SteamSaleDto>) {
     Object.assign(this, partial);

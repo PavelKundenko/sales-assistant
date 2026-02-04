@@ -2,6 +2,7 @@ import { DataSource, type DataSourceOptions } from 'typeorm';
 import { config } from 'dotenv';
 import { UserEntity } from './src/modules/users/entities/user.entity';
 import { SubscriptionEntity } from './src/modules/subscriptions/entities/subscription.entity';
+import { UserPreferencesEntity } from './src/modules/users/entities/user-preferences.entity';
 
 config();
 
@@ -18,12 +19,12 @@ const migrationsPath = isProduction ? 'dist/src/migrations/[0-9]*.js' : 'src/mig
 export const dataSourceOptions: DataSourceOptions = {
   type: 'postgres',
   url: databaseUrl,
-  entities: [UserEntity, SubscriptionEntity],
+  entities: [UserEntity, SubscriptionEntity, UserPreferencesEntity],
   migrations: [migrationsPath],
   synchronize: false,
   ssl: { rejectUnauthorized: false },
 };
 
-export const dataSource = new DataSource(dataSourceOptions);
+const dataSource = new DataSource(dataSourceOptions);
 
 export default dataSource;

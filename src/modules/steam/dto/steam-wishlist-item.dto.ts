@@ -7,6 +7,9 @@ export class SteamWishlistItemDto {
   discountPercent?: number | null;
   headerImage!: string;
   storeUrl!: string;
+  macAvailable!: boolean;
+  windowsAvailable!: boolean;
+  linuxAvailable!: boolean;
 
   constructor(partial: Partial<SteamWishlistItemDto>) {
     Object.assign(this, partial);

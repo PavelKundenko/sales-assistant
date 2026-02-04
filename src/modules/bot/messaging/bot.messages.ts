@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { BotMessageOptions } from '../core/bot.types';
 import { BOT_KEYBOARD_BUILDER, type KeyboardBuilderPort } from '../ports/bot.ports';
+import { Platform } from '../../users/entities/user-preferences.entity';
 
 export type BotReply = {
   text: string;
@@ -35,6 +36,7 @@ export class BotMessages {
         '/sales - Отримати актуальні знижки\n' +
         '/wishlist - Переглянути список бажаного\n' +
         '/setup_wishlist - Налаштувати Steam ID\n' +
+        '/settings - Налаштування\n' +
         '/help - Показати це повідомлення\n\n' +
         'Щоб підключити Steam ID, ви також можете просто надіслати його в повідомленні (17 цифр).',
       options: {
@@ -142,7 +144,82 @@ export class BotMessages {
     };
   }
 
+  settingsMenuMessage(): BotReply {
+    return {
+      text: 'Налаштування: оберіть, що змінити.',
+      options: {
+        keyboard: this.buildSettingsMenuKeyboard(),
+      },
+    };
+  }
+
+  settingsFrequencyMessage(currentFrequency: number): BotReply {
+    return {
+      text: `Оберіть частоту оновлень (1-7 днів).\nПоточна частота: кожні ${currentFrequency} дн.`,
+      options: {
+        keyboard: this.buildFrequencyKeyboard(),
+      },
+    };
+  }
+
+  settingsFrequencyUpdatedMessage(frequency: number): BotReply {
+    return {
+      text: `Частоту оновлень змінено на ${frequency} дн.`,
+      options: {
+        keyboard: this.buildSettingsMenuKeyboard(),
+      },
+    };
+  }
+
+  settingsFrequencyInvalidMessage(): BotReply {
+    return {
+      text: 'Оберіть число від 1 до 7.',
+      options: {
+        keyboard: this.buildFrequencyKeyboard(),
+      },
+    };
+  }
+
+  settingsPlatformsMessage(selected: Platform[]): BotReply {
+    return {
+      text: 'Оберіть платформи. Натискайте, щоб увімкнути або вимкнути.',
+      options: {
+        keyboard: this.buildPlatformsKeyboard(selected),
+      },
+    };
+  }
+
+  settingsPlatformsSavedMessage(): BotReply {
+    return {
+      text: 'Платформи збережено.',
+      options: {
+        keyboard: this.buildSettingsMenuKeyboard(),
+      },
+    };
+  }
+
+  settingsClosedMessage(isSubscribed: boolean, hasSteamId: boolean): BotReply {
+    return {
+      text: 'Налаштування закрито.',
+      options: {
+        keyboard: this.buildMainKeyboard(isSubscribed, hasSteamId),
+      },
+    };
+  }
+
   private buildMainKeyboard(isSubscribed: boolean, hasSteamId: boolean): string[][] {
     return this.keyboardBuilder.buildMainKeyboard({ isSubscribed, hasSteamId });
+  }
+
+  private buildSettingsMenuKeyboard(): string[][] {
+    return this.keyboardBuilder.buildSettingsMenuKeyboard();
+  }
+
+  private buildFrequencyKeyboard(): string[][] {
+    return this.keyboardBuilder.buildFrequencyKeyboard();
+  }
+
+  private buildPlatformsKeyboard(selected: Platform[]): string[][] {
+    return this.keyboardBuilder.buildPlatformsKeyboard(selected);
   }
 }

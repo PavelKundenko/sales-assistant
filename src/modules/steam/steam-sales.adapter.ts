@@ -21,6 +21,9 @@ export class SteamSalesAdapter {
             discountPercent: game.discount_percent,
             headerImage: game.header_image,
             storeUrl: `https://store.steampowered.com/app/${game.id}`,
+            macAvailable: game.mac_available,
+            windowsAvailable: game.windows_available,
+            linuxAvailable: game.linux_available,
           }),
         );
       }
@@ -55,6 +58,9 @@ export class SteamSalesAdapter {
             discountPercent: price?.discount_percent ?? 0,
             headerImage,
             storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
+            macAvailable: details.platforms?.mac ?? false,
+            windowsAvailable: details.platforms?.windows ?? false,
+            linuxAvailable: details.platforms?.linux ?? false,
           }),
         );
       }
@@ -91,6 +97,9 @@ export class SteamSalesAdapter {
             discountPercent,
             headerImage,
             storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
+            macAvailable: details.platforms?.mac ?? false,
+            windowsAvailable: details.platforms?.windows ?? false,
+            linuxAvailable: details.platforms?.linux ?? false,
           }),
         );
       }
