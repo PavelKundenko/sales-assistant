@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { Logger } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
+import { telegramConfig } from '../../../configuration';
 import { BotService } from './bot.service';
 import {
   BOT_SALES_MESSAGE_BUILDER,
@@ -35,6 +37,7 @@ describe('BotService', () => {
     messenger = {
       sendMessage: jest.fn(),
       sendMediaGroup: jest.fn(),
+      sendMessageSequence: jest.fn(),
       setMyCommands: jest.fn(),
     } as unknown as jest.Mocked<BotMessenger>;
 
@@ -57,6 +60,11 @@ describe('BotService', () => {
       createOrGet: jest.fn(),
       setSteamId: jest.fn(),
       getUsersWithSteamId: jest.fn(),
+      findAllActive: jest.fn(),
+      updateSalesReceivedAt: jest.fn(),
+      updateWishlistReceivedAt: jest.fn(),
+      updateUpdateFrequency: jest.fn(),
+      updatePlatforms: jest.fn(),
     };
 
     subscriptionsService = {
@@ -67,27 +75,34 @@ describe('BotService', () => {
     };
 
     contextService = {
-      getSubscriptionContext: jest.fn(),
+      getSubscriptionContext: jest.fn().mockResolvedValue({ user: mockUser, activeSubscription: null }),
     } as unknown as jest.Mocked<BotContextService>;
 
     messages = {
-      startMessage: jest.fn(),
-      salesLoadingMessage: jest.fn(),
-      salesEmptyMessage: jest.fn(),
-      salesErrorMessage: jest.fn(),
-      helpMessage: jest.fn(),
-      subscribeMessage: jest.fn(),
-      unsubscribeMessage: jest.fn(),
-      wishlistLoadingMessage: jest.fn(),
-      wishlistEmptyMessage: jest.fn(),
-      wishlistErrorMessage: jest.fn(),
-      wishlistSummaryOptions: jest.fn(),
-      steamIdGuideMessage: jest.fn(),
-      steamIdAlreadyConnectedMessage: jest.fn(),
-      steamIdConnectedMessage: jest.fn(),
-      steamIdNotFoundMessage: jest.fn(),
-      startRequiredMessage: jest.fn(),
-      unknownTextMessage: jest.fn(),
+      startMessage: jest.fn().mockReturnValue({ text: 'start' }),
+      salesLoadingMessage: jest.fn().mockReturnValue({ text: 'loading' }),
+      salesEmptyMessage: jest.fn().mockReturnValue({ text: 'empty' }),
+      salesErrorMessage: jest.fn().mockReturnValue({ text: 'error' }),
+      helpMessage: jest.fn().mockReturnValue({ text: 'help' }),
+      subscribeMessage: jest.fn().mockReturnValue({ text: 'subscribe' }),
+      unsubscribeMessage: jest.fn().mockReturnValue({ text: 'unsubscribe' }),
+      wishlistLoadingMessage: jest.fn().mockReturnValue({ text: 'loading' }),
+      wishlistEmptyMessage: jest.fn().mockReturnValue({ text: 'empty' }),
+      wishlistErrorMessage: jest.fn().mockReturnValue({ text: 'error' }),
+      wishlistSummaryOptions: jest.fn().mockReturnValue({ text: 'summary' }),
+      steamIdGuideMessage: jest.fn().mockReturnValue({ text: 'guide' }),
+      steamIdAlreadyConnectedMessage: jest.fn().mockReturnValue({ text: 'already-connected' }),
+      steamIdConnectedMessage: jest.fn().mockReturnValue({ text: 'connected' }),
+      steamIdNotFoundMessage: jest.fn().mockReturnValue({ text: 'not-found' }),
+      startRequiredMessage: jest.fn().mockReturnValue({ text: 'start-required' }),
+      unknownTextMessage: jest.fn().mockReturnValue({ text: 'unknown' }),
+      settingsMenuMessage: jest.fn().mockReturnValue({ text: 'settings-menu' }),
+      settingsFrequencyMessage: jest.fn().mockReturnValue({ text: 'settings-frequency' }),
+      settingsFrequencyUpdatedMessage: jest.fn().mockReturnValue({ text: 'settings-frequency-updated' }),
+      settingsFrequencyInvalidMessage: jest.fn().mockReturnValue({ text: 'settings-frequency-invalid' }),
+      settingsPlatformsMessage: jest.fn().mockReturnValue({ text: 'settings-platforms' }),
+      settingsPlatformsSavedMessage: jest.fn().mockReturnValue({ text: 'settings-platforms-saved' }),
+      settingsClosedMessage: jest.fn().mockReturnValue({ text: 'settings-closed' }),
     } as unknown as jest.Mocked<BotMessages>;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -101,6 +116,13 @@ describe('BotService', () => {
         { provide: BOT_SUBSCRIPTIONS_SERVICE, useValue: subscriptionsService },
         { provide: BotContextService, useValue: contextService },
         { provide: BotMessages, useValue: messages },
+        {
+          provide: telegramConfig.KEY,
+          useValue: {
+            botToken: 'token',
+            adminId: 123,
+          } as ConfigType<typeof telegramConfig>,
+        },
       ],
     }).compile();
 
@@ -138,18 +160,21 @@ describe('BotService', () => {
 
   describe('handleSalesCommand', () => {
     it('should send sales media group', async () => {
-      const mockSales = [{ name: 'Game 1' }] as any;
-      const mockMedia = [{ type: 'photo', media: 'img' }] as any;
+      const mockSales = [{ name: 'Game 1', windowsAvailable: true }] as any;
+      const mockSequence = [
+        { type: 'mediaGroup', media: [{ type: 'photo', media: 'img' }] },
+        { type: 'text', text: 'text' },
+      ] as any;
 
       messages.salesLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getCurrentSales.mockResolvedValue(mockSales);
-      salesMessageBuilder.build.mockReturnValue(mockMedia);
+      salesMessageBuilder.build.mockReturnValue(mockSequence);
 
       await service.handleSalesCommand(mockRequest);
 
       expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Loading', undefined);
       expect(steamService.getCurrentSales as jest.Mock).toHaveBeenCalled();
-      expect(messenger.sendMediaGroup as jest.Mock).toHaveBeenCalledWith(123, mockMedia);
+      expect(messenger.sendMessageSequence as jest.Mock).toHaveBeenCalledWith(123, mockSequence);
     });
 
     it('should handle empty sales', async () => {
@@ -185,6 +210,18 @@ describe('BotService', () => {
     });
   });
 
+  describe('handleSettingsCommand', () => {
+    it('should send settings menu message', async () => {
+      contextService.getSubscriptionContext.mockResolvedValue({ user: mockUser, activeSubscription: null });
+      messages.settingsMenuMessage.mockReturnValue({ text: 'Settings' });
+
+      await service.handleSettingsCommand(mockRequest);
+
+      expect(messages.settingsMenuMessage as jest.Mock).toHaveBeenCalled();
+      expect(messenger.sendMessage as jest.Mock).toHaveBeenCalledWith(123, 'Settings', undefined);
+    });
+  });
+
   describe('handleSubscribe', () => {
     it('should create subscription and confirm', async () => {
       messages.subscribeMessage.mockReturnValue({ text: 'Subscribed' });
@@ -215,20 +252,56 @@ describe('BotService', () => {
     });
   });
 
+  describe('handlePostCommand', () => {
+    it('should send broadcast message to all active users', async () => {
+      const mockUsers = [
+        { telegramId: '111', status: 'ACTIVE' },
+        { telegramId: '222', status: 'ACTIVE' },
+      ] as UserEntity[];
+
+      usersService.findAllActive.mockResolvedValue(mockUsers);
+      messenger.sendMessage.mockResolvedValue();
+
+      await service.handlePostCommand({ chatId: 123, text: '/post Hello World' } as BotRequest);
+
+      expect(usersService.findAllActive).toHaveBeenCalled();
+      expect(messenger.sendMessage).toHaveBeenCalledWith(111, 'Hello World');
+      expect(messenger.sendMessage).toHaveBeenCalledWith(222, 'Hello World');
+      expect(messenger.sendMessage).toHaveBeenCalledWith(123, 'Message sent to 2 active users.');
+    });
+
+    it('should ignore if not admin', async () => {
+      await service.handlePostCommand({ chatId: 999, text: '/post Hello' } as BotRequest);
+
+      expect(usersService.findAllActive).not.toHaveBeenCalled();
+      expect(messenger.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('should prompt for message if empty', async () => {
+      await service.handlePostCommand({ chatId: 123, text: '/post   ' } as BotRequest);
+
+      expect(messenger.sendMessage).toHaveBeenCalledWith(123, 'Please provide a message to send.');
+      expect(usersService.findAllActive).not.toHaveBeenCalled();
+    });
+  });
+
   describe('handleWishlistCommand', () => {
     it('should send wishlist media group', async () => {
-      const mockItems = [{ name: 'Item 1' }] as any;
-      const mockMedia = [{ type: 'photo', media: 'img' }] as any;
+      const mockItems = [{ name: 'Item 1', windowsAvailable: true }] as any;
+      const mockSequence = [
+        { type: 'mediaGroup', media: [{ type: 'photo', media: 'img' }] },
+        { type: 'text', text: 'text' },
+      ] as any;
 
       contextService.getSubscriptionContext.mockResolvedValue({ user: { ...mockUser, steamId: 'steam-id' } } as any);
       messages.wishlistLoadingMessage.mockReturnValue({ text: 'Loading' });
       steamService.getWishlistItems.mockResolvedValue(mockItems);
-      wishlistMessageBuilder.build.mockReturnValue(mockMedia);
+      wishlistMessageBuilder.build.mockReturnValue(mockSequence);
 
       await service.handleWishlistCommand(mockRequest);
 
       expect(steamService.getWishlistItems as jest.Mock).toHaveBeenCalledWith('steam-id');
-      expect(messenger.sendMediaGroup as jest.Mock).toHaveBeenCalledWith(123, mockMedia);
+      expect(messenger.sendMessageSequence as jest.Mock).toHaveBeenCalledWith(123, mockSequence);
     });
 
     it('should handle empty wishlist', async () => {
@@ -291,7 +364,8 @@ describe('BotService', () => {
         { command: 'start', description: 'Початок роботи' },
         { command: 'sales', description: '🔥 Актуальні знижки' },
         { command: 'wishlist', description: '📋 Список бажаного' },
-        { command: 'setup_wishlist', description: '⚙️ Налаштувати Steam ID' },
+        { command: 'setup_wishlist', description: "🔗 Прив'язати Steam ID" },
+        { command: 'settings', description: '⚙️ Налаштування' },
         { command: 'help', description: 'ℹ️ Довідка' },
       ]);
     });

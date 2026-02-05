@@ -67,6 +67,11 @@ export interface SteamAppDetailsData {
     initial_formatted: string;
     final_formatted: string;
   };
+  platforms?: {
+    windows: boolean;
+    mac: boolean;
+    linux: boolean;
+  };
 }
 
 export interface SteamAppDetailsEntry {

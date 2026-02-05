@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   CONNECT_WISHLIST_BUTTON_LABEL,
   SALES_BUTTON_LABEL,
+  SETTINGS_BUTTON_LABEL,
   START_BUTTON_LABEL,
   SUBSCRIBE_BUTTON_LABEL,
   UNSUBSCRIBE_BUTTON_LABEL,
@@ -33,6 +34,12 @@ export class BotTextRouter {
       return;
     }
 
+    if (text === SETTINGS_BUTTON_LABEL) {
+      await this.botService.handleSettingsCommand(request);
+
+      return;
+    }
+
     if (text === SALES_BUTTON_LABEL) {
       await this.botService.handleSalesCommand(request);
 
@@ -59,6 +66,12 @@ export class BotTextRouter {
 
     if (text === CONNECT_WISHLIST_BUTTON_LABEL) {
       await this.botService.handleConnectWishlistCommand(request);
+
+      return;
+    }
+
+    if (text.startsWith('/post')) {
+      await this.botService.handlePostCommand(request);
 
       return;
     }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Not, Repository } from 'typeorm';
 import { UserEntity, UserStatus } from './entities/user.entity';
+import { UserPreferencesEntity } from './entities/user-preferences.entity';
 
 @Injectable()
 export class UsersService {
@@ -13,6 +14,7 @@ export class UsersService {
   async findByTelegramId(telegramId: string): Promise<UserEntity | null> {
     return this.repository.findOne({
       where: { telegramId },
+      relations: { preferences: true },
     });
   }
 
@@ -29,12 +31,19 @@ export class UsersService {
         return [saved, true];
       }
 
+      if (!existing.preferences) {
+        existing.preferences = new UserPreferencesEntity();
+
+        await this.repository.save(existing);
+      }
+
       return [existing, false];
     }
 
     const entity = this.repository.create({
       telegramId,
       status: UserStatus.ACTIVE,
+      preferences: new UserPreferencesEntity(),
     });
 
     const saved = await this.repository.save(entity);
@@ -51,6 +60,78 @@ export class UsersService {
   }
 
   async getUsersWithSteamId(): Promise<UserEntity[]> {
-    return this.repository.find({ where: { steamId: Not(IsNull()) } });
+    return this.repository.find({
+      where: { steamId: Not(IsNull()) },
+      relations: { preferences: true },
+    });
+  }
+
+  async findAllActive(): Promise<UserEntity[]> {
+    return this.repository.find({ where: { status: UserStatus.ACTIVE } });
+  }
+
+  async updateSalesReceivedAt(userId: string): Promise<void> {
+    const user = await this.repository.findOne({
+      where: { id: userId },
+      relations: { preferences: true },
+    });
+
+    if (user?.preferences) {
+      user.preferences.salesUpdateReceivedAt = new Date();
+
+      await this.repository.save(user);
+    }
+  }
+
+  async updateWishlistReceivedAt(userId: string): Promise<void> {
+    const user = await this.repository.findOne({
+      where: { id: userId },
+      relations: { preferences: true },
+    });
+
+    if (user?.preferences) {
+      user.preferences.wishlistUpdateReceivedAt = new Date();
+
+      await this.repository.save(user);
+    }
+  }
+
+  async updateUpdateFrequency(userId: string, frequency: number): Promise<void> {
+    const user = await this.repository.findOne({
+      where: { id: userId },
+      relations: { preferences: true },
+    });
+
+    if (!user) {
+      return;
+    }
+
+    if (!user.preferences) {
+      user.preferences = new UserPreferencesEntity();
+    }
+
+    user.preferences.salesUpdateFrequency = frequency;
+    user.preferences.wishlistUpdateFrequency = frequency;
+
+    await this.repository.save(user);
+  }
+
+  async updatePlatforms(userId: string, platforms: UserPreferencesEntity['platform']): Promise<void> {
+    const user = await this.repository.findOne({
+      where: { id: userId },
+      relations: { preferences: true },
+    });
+
+    if (!user) {
+      return;
+    }
+
+    if (!user.preferences) {
+      user.preferences = new UserPreferencesEntity();
+    }
+
+    user.preferences.platform = platforms;
+
+    await this.repository.save(user);
   }
 }

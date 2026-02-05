@@ -1,11 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Markup, Telegraf } from 'telegraf';
 import { InputMediaPhoto } from 'telegraf/types';
-import type { BotChatId, BotCommand, BotMediaItem, BotMessageOptions, BotMessenger } from '../core/bot.types';
+import type {
+  BotChatId,
+  BotCommand,
+  BotMediaItem,
+  BotMessageOptions,
+  BotMessenger,
+  BotMessageSequence,
+} from '../core/bot.types';
 
 @Injectable()
 export class TelegramBotMessenger implements BotMessenger {
+  private readonly logger = new Logger(TelegramBotMessenger.name);
+
   constructor(@InjectBot() private readonly bot: Telegraf<Context>) {}
 
   async sendMessage(chatId: BotChatId, text: string, options?: BotMessageOptions): Promise<void> {
@@ -48,6 +57,24 @@ export class TelegramBotMessenger implements BotMessenger {
       return entry;
     });
     await this.bot.telegram.sendMediaGroup(chatId, mediaGroup);
+  }
+
+  async sendMessageSequence(chatId: BotChatId, sequence: BotMessageSequence): Promise<void> {
+    for (const [index, message] of sequence.entries()) {
+      try {
+        if (message.type === 'text') {
+          await this.sendMessage(chatId, message.text, message.options);
+        } else {
+          await this.sendMediaGroup(chatId, message.media);
+        }
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        this.logger.warn(
+          `Failed to send message sequence item ${index + 1}/${sequence.length} to ${chatId}: ${reason}`,
+        );
+        throw error;
+      }
+    }
   }
 
   async setMyCommands(commands: BotCommand[]): Promise<void> {

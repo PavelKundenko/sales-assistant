@@ -54,7 +54,7 @@ export class SubscriptionsService {
         status: SubscriptionStatus.ACTIVE,
         user: { status: UserStatus.ACTIVE },
       },
-      relations: ['user'],
+      relations: ['user', 'user.preferences'],
     });
   }
 }

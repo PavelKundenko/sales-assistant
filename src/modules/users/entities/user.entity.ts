@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, OneToOne, PrimaryGeneratedColumn, Unique, UpdateDateColumn } from 'typeorm';
+import { UserPreferencesEntity } from './user-preferences.entity';
 
 export enum UserStatus {
   ACTIVE = 'ACTIVE',
@@ -44,4 +45,9 @@ export class UserEntity {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt!: Date;
+
+  @OneToOne(() => UserPreferencesEntity, (preferences) => preferences.user, {
+    cascade: true,
+  })
+  preferences?: UserPreferencesEntity;
 }

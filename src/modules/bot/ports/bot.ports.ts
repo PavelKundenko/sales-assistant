@@ -3,7 +3,8 @@ import type { SteamWishlistItemDto } from '../../steam/dto/steam-wishlist-item.d
 import type { SteamPlayerResponse } from '../../steam/interfaces/steam-user.interface';
 import type { SubscriptionEntity, SubscriptionType } from '../../subscriptions/entities/subscription.entity';
 import type { UserEntity } from '../../users/entities/user.entity';
-import type { BotKeyboard, BotMediaItem, BuildKeyboardParams } from '../core/bot.types';
+import type { BotKeyboard, BotMessageSequence, BuildKeyboardParams } from '../core/bot.types';
+import type { Platform } from '../../users/entities/user-preferences.entity';
 
 export const BOT_STEAM_SERVICE = Symbol('BOT_STEAM_SERVICE');
 export const BOT_USERS_SERVICE = Symbol('BOT_USERS_SERVICE');
@@ -33,6 +34,11 @@ export interface UsersServicePort {
   createOrGet(telegramId: string): Promise<[UserEntity, created: boolean]>;
   setSteamId(userId: string, steamId: string): Promise<void>;
   getUsersWithSteamId(): Promise<UserEntity[]>;
+  findAllActive(): Promise<UserEntity[]>;
+  updateSalesReceivedAt(userId: string): Promise<void>;
+  updateWishlistReceivedAt(userId: string): Promise<void>;
+  updateUpdateFrequency(userId: string, frequency: number): Promise<void>;
+  updatePlatforms(userId: string, platforms: Platform[]): Promise<void>;
 }
 
 export interface SubscriptionsServicePort {
@@ -43,13 +49,16 @@ export interface SubscriptionsServicePort {
 }
 
 export interface SalesMessageBuilderPort {
-  build(sales: SteamSaleDto[], options?: SalesMessageBuilderOptions): BotMediaItem[];
+  build(sales: SteamSaleDto[], options?: SalesMessageBuilderOptions): BotMessageSequence;
 }
 
 export interface WishlistMessageBuilderPort {
-  build(items: SteamWishlistItemDto[], options?: WishlistMessageBuilderOptions): BotMediaItem[];
+  build(items: SteamWishlistItemDto[], options?: WishlistMessageBuilderOptions): BotMessageSequence;
 }
 
 export interface KeyboardBuilderPort {
   buildMainKeyboard(params: BuildKeyboardParams): BotKeyboard;
+  buildSettingsMenuKeyboard(): BotKeyboard;
+  buildFrequencyKeyboard(): BotKeyboard;
+  buildPlatformsKeyboard(selected: Platform[]): BotKeyboard;
 }

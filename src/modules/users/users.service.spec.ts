@@ -36,11 +36,11 @@ describe('UsersService', () => {
 
     expect(result).toBe(user);
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(repository.findOne).toHaveBeenCalledWith({ where: { telegramId: '123' } });
+    expect(repository.findOne).toHaveBeenCalledWith({ where: { telegramId: '123' }, relations: { preferences: true } });
   });
 
   it('returns existing active user without creating a new one', async () => {
-    const existing = { id: '1', telegramId: '321', status: UserStatus.ACTIVE } as UserEntity;
+    const existing = { id: '1', telegramId: '321', status: UserStatus.ACTIVE, preferences: {} } as UserEntity;
     repository.findOne.mockResolvedValue(existing);
 
     const [user, created] = await service.createOrGet('321');
@@ -81,7 +81,9 @@ describe('UsersService', () => {
     const [user, created] = await service.createOrGet('999');
 
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    expect(repository.create).toHaveBeenCalledWith({ telegramId: '999', status: UserStatus.ACTIVE });
+    expect(repository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ telegramId: '999', status: UserStatus.ACTIVE }),
+    );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.save).toHaveBeenCalledWith(createdEntity);
     expect(user).toBe(createdEntity);

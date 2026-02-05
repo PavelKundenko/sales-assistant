@@ -1,13 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { SteamWishlistItemDto } from '../../../steam/dto/steam-wishlist-item.dto';
-import type { BotMediaItem } from '../../core/bot.types';
+import type { BotMessageSequence } from '../../core/bot.types';
 import { SteamMessageBuilder, type SteamMessageBuilderOptions } from './steam-message.builder';
 
-export type WishlistMediaGroup = BotMediaItem[];
-
 @Injectable()
-export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistItemDto[], WishlistMediaGroup> {
-  build(items: SteamWishlistItemDto[], options?: SteamMessageBuilderOptions): WishlistMediaGroup {
+export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistItemDto[], BotMessageSequence> {
+  build(items: SteamWishlistItemDto[], options?: SteamMessageBuilderOptions): BotMessageSequence {
     if (items.length === 0) {
       throw new Error('Wishlist collection is empty');
     }
@@ -28,37 +26,40 @@ export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistIte
       lines.push(options.intro);
     }
 
-    for (const game of items) {
+    for (const { game } of itemsWithImages) {
       const name = this.escapeHtml(game.name ?? 'Невідома назва');
       const storeUrl = this.sanitizeUrl(game.storeUrl);
       const title = storeUrl ? `<a href="${this.escapeHtml(storeUrl)}">${name}</a>` : name;
 
       const originalPrice = this.formatPrice(game.originalPrice);
       const finalPrice = this.formatPrice(game.finalPrice);
+      const platformsLine = this.formatPlatforms(game);
 
       const hasDiscount = typeof game.discountPercent === 'number' && game.discountPercent > 0;
 
       if (hasDiscount) {
-        lines.push(title, `💰 Знижка ${game.discountPercent}%`, `Ціна: <s>${originalPrice}</s> ${finalPrice}`, '');
+        lines.push(
+          title,
+          `💰 Знижка ${game.discountPercent}%`,
+          `Ціна: <s>${originalPrice}</s> ${finalPrice}`,
+          platformsLine,
+          '',
+        );
       } else {
-        lines.push(title, `Ціна: ${finalPrice}`, '');
+        lines.push(title, `Ціна: ${finalPrice}`, platformsLine, '');
       }
     }
 
-    const caption = lines.join('\n').trim();
+    const text = lines.join('\n').trim();
 
-    return itemsWithImages.map(({ imageUrl }, index): BotMediaItem => {
-      const mediaItem: BotMediaItem = {
-        type: 'photo',
-        media: imageUrl,
-      };
+    const mediaGroup = itemsWithImages.map(({ imageUrl }) => ({
+      type: 'photo' as const,
+      media: imageUrl,
+    }));
 
-      if (index === 0) {
-        mediaItem.caption = caption;
-        mediaItem.parseMode = 'HTML';
-      }
-
-      return mediaItem;
-    });
+    return [
+      { type: 'mediaGroup', media: mediaGroup },
+      { type: 'text', text, options: { parseMode: 'HTML' } },
+    ];
   }
 }

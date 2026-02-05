@@ -28,6 +28,7 @@ import { dataSourceOptions } from '../data-source.js';
     }),
     TypeOrmModule.forRoot({
       ...dataSourceOptions,
+      migrations: [],
       migrationsRun: false,
     }),
     ScheduleModule.forRoot(),

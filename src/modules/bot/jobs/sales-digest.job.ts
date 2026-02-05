@@ -6,10 +6,14 @@ import {
   BOT_SALES_MESSAGE_BUILDER,
   BOT_STEAM_SERVICE,
   BOT_SUBSCRIPTIONS_SERVICE,
+  BOT_USERS_SERVICE,
   type SalesMessageBuilderPort,
   type SteamServicePort,
   type SubscriptionsServicePort,
+  type UsersServicePort,
 } from '../ports/bot.ports';
+import { filterByPlatform, shouldSendUpdate } from '../../steam/utils/platform-filter.util';
+import { Platform } from '../../users/entities/user-preferences.entity';
 
 @Injectable()
 export class SalesDigestJob {
@@ -24,6 +28,8 @@ export class SalesDigestJob {
     private readonly salesMessageBuilder: SalesMessageBuilderPort,
     @Inject(BOT_MESSENGER)
     private readonly messenger: BotMessenger,
+    @Inject(BOT_USERS_SERVICE)
+    private readonly usersService: UsersServicePort,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_6PM)
@@ -44,15 +50,42 @@ export class SalesDigestJob {
         return;
       }
 
-      const mediaGroup = this.salesMessageBuilder.build(sales, {
-        intro: `🔥 Актуальні знижки у Steam на ${new Date().toLocaleDateString()}:\n`,
-      });
-
       for (const subscription of subscriptions) {
         const telegramId = subscription.user.telegramId;
+        const user = subscription.user;
 
         try {
-          await this.messenger.sendMediaGroup(telegramId, mediaGroup);
+          const preferences = user.preferences;
+
+          if (!preferences) {
+            this.logger.warn(`User ${user.id} has no preferences, skipping`);
+            continue;
+          }
+
+          const shouldSend = shouldSendUpdate(preferences.salesUpdateReceivedAt, preferences.salesUpdateFrequency);
+
+          if (!shouldSend) {
+            this.logger.debug(`Skipping sales digest for user ${user.id} - frequency not met`);
+            continue;
+          }
+
+          const userPlatforms = preferences.platform || [Platform.PC, Platform.MAC, Platform.STEAM_DECK];
+
+          const filteredSales = filterByPlatform(sales, userPlatforms);
+
+          if (filteredSales.length === 0) {
+            this.logger.debug(`No sales matching platforms for user ${user.id}`);
+            continue;
+          }
+
+          const messageSequence = this.salesMessageBuilder.build(filteredSales, {
+            intro: `🔥 Актуальні знижки у Steam на ${new Date().toLocaleDateString()}:\n`,
+          });
+
+          await this.messenger.sendMessageSequence(telegramId, messageSequence);
+          await this.usersService.updateSalesReceivedAt(user.id);
+
+          this.logger.log(`Sent sales digest to user ${user.id}`);
         } catch (error) {
           const reason = error instanceof Error ? error.message : String(error);
           this.logger.warn(`Failed to send sales digest to user ${telegramId}: ${reason}`);

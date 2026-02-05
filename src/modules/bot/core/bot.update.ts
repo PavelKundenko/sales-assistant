@@ -49,6 +49,11 @@ export class BotUpdate {
     await this.botService.handleSetupWishlistCommand(this.buildRequest(context));
   }
 
+  @Command('settings')
+  async onSettingsCommand(@Ctx() context: Context) {
+    await this.botService.handleSettingsCommand(this.buildRequest(context));
+  }
+
   @On('text')
   async onText(@Ctx() context: Context) {
     await this.botTextRouter.handleText(this.buildRequest(context));
