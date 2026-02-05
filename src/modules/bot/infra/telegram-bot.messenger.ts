@@ -39,7 +39,7 @@ export class TelegramBotMessenger implements BotMessenger {
     await this.bot.telegram.sendMessage(chatId, text, extra);
   }
 
-  async sendMediaGroup(chatId: BotChatId, media: BotMediaItem[]): Promise<void> {
+  async sendMediaGroup(chatId: BotChatId, media: readonly BotMediaItem[]): Promise<void> {
     if (media.length === 1) {
       const item = media[0];
       await this.bot.telegram.sendPhoto(chatId, item.media, {
