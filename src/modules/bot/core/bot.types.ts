@@ -14,10 +14,10 @@ export type BuildKeyboardParams = {
 };
 
 export type BotMediaItem = {
-  type: 'photo';
-  media: string;
-  caption?: string;
-  parseMode?: 'HTML';
+  readonly type: 'photo';
+  readonly media: string;
+  readonly caption?: string;
+  readonly parseMode?: 'HTML';
 };
 
 export type BotMessage =
@@ -28,16 +28,16 @@ export type BotMessage =
     }
   | {
       type: 'mediaGroup';
-      media: BotMediaItem[];
+      media: readonly BotMediaItem[];
     };
 
-export type BotMessageSequence = BotMessage[];
+export type BotMessageSequence = readonly BotMessage[];
 
 export interface BotMessenger {
   sendMessage(chatId: BotChatId, text: string, options?: BotMessageOptions): Promise<void>;
-  sendMediaGroup(chatId: BotChatId, media: BotMediaItem[]): Promise<void>;
+  sendMediaGroup(chatId: BotChatId, media: readonly BotMediaItem[]): Promise<void>;
   sendMessageSequence(chatId: BotChatId, sequence: BotMessageSequence): Promise<void>;
-  setMyCommands(commands: BotCommand[]): Promise<void>;
+  setMyCommands(commands: readonly BotCommand[]): Promise<void>;
 }
 
 export type BotCommand = {
@@ -48,7 +48,9 @@ export type BotCommand = {
 export type BotRequest = {
   chatId: BotChatId | null;
   telegramUserId: number | null;
+  telegramUsername?: string | null;
   text?: string;
+  media?: readonly BotMediaItem[];
 };
 
 export const BOT_MESSENGER = Symbol('BOT_MESSENGER');

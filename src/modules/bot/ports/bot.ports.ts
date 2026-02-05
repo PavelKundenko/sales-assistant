@@ -31,8 +31,9 @@ export interface SteamServicePort {
 
 export interface UsersServicePort {
   findByTelegramId(telegramId: string): Promise<UserEntity | null>;
-  createOrGet(telegramId: string): Promise<[UserEntity, created: boolean]>;
+  createOrGet(telegramId: string, telegramUsername?: string | null): Promise<[UserEntity, created: boolean]>;
   setSteamId(userId: string, steamId: string): Promise<void>;
+  updateTelegramUsername(userId: string, telegramUsername: string): Promise<void>;
   getUsersWithSteamId(): Promise<UserEntity[]>;
   findAllActive(): Promise<UserEntity[]>;
   updateSalesReceivedAt(userId: string): Promise<void>;

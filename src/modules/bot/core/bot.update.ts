@@ -12,15 +12,26 @@ export class BotUpdate {
   ) {}
 
   private buildRequest(context: Context): BotRequest {
+    const message = context.message;
+
     const text =
-      context.message && 'text' in context.message && typeof context.message.text === 'string'
-        ? context.message.text
+      message && 'text' in message && typeof message.text === 'string'
+        ? message.text
+        : message && 'caption' in message && typeof message.caption === 'string'
+          ? message.caption
+          : undefined;
+
+    const media =
+      message && 'photo' in message && Array.isArray(message.photo) && message.photo.length > 0
+        ? [{ type: 'photo' as const, media: message.photo[message.photo.length - 1].file_id }]
         : undefined;
 
     return {
       chatId: context.chat?.id ?? null,
       telegramUserId: context.from?.id ?? null,
+      telegramUsername: context.from?.username ?? null,
       text,
+      media,
     };
   }
 
@@ -57,5 +68,10 @@ export class BotUpdate {
   @On('text')
   async onText(@Ctx() context: Context) {
     await this.botTextRouter.handleText(this.buildRequest(context));
+  }
+
+  @On('photo')
+  async onPhoto(@Ctx() context: Context) {
+    await this.botService.handlePostCommand(this.buildRequest(context));
   }
 }

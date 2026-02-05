@@ -111,4 +111,13 @@ describe('UsersService', () => {
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(repository.update).toHaveBeenCalledWith({ id: 'user-1' }, { steamId: '76561198000000000' });
   });
+
+  it('updates telegram username for user', async () => {
+    repository.update.mockResolvedValue({} as never);
+
+    await service.updateTelegramUsername('user-2', 'alice');
+
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    expect(repository.update).toHaveBeenCalledWith({ id: 'user-2' }, { telegramUsername: 'alice' });
+  });
 });

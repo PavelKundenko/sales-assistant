@@ -16,6 +16,15 @@ import { KeyboardBuilder } from '../messaging/keyboard.builder';
 import { BotMessages } from '../messaging/bot.messages';
 import { BotContextService } from './bot-context.service';
 import { BotTextRouter } from '../routing/bot-text-router';
+import { BotResponder } from './services/bot-responder.service';
+import { BotRequestGuard } from './services/bot-request.guard';
+import { BotSettingsService } from './services/bot-settings.service';
+import { BotSalesService } from './services/bot-sales.service';
+import { BotWishlistService } from './services/bot-wishlist.service';
+import { BotSubscriptionService } from './services/bot-subscription.service';
+import { BotAdminService } from './services/bot-admin.service';
+import { BotStartService } from './services/bot-start.service';
+import { BotHelpService } from './services/bot-help.service';
 import {
   BOT_KEYBOARD_BUILDER,
   BOT_SALES_MESSAGE_BUILDER,
@@ -45,6 +54,15 @@ import { WishlistDigestJob } from '../jobs/wishlist-digest.job';
   providers: [
     BotUpdate,
     BotService,
+    BotResponder,
+    BotRequestGuard,
+    BotSettingsService,
+    BotSalesService,
+    BotWishlistService,
+    BotSubscriptionService,
+    BotAdminService,
+    BotStartService,
+    BotHelpService,
     SalesMessageBuilder,
     WishlistMessageBuilder,
     SalesDigestJob,

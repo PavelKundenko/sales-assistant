@@ -40,6 +40,15 @@ export class TelegramBotMessenger implements BotMessenger {
   }
 
   async sendMediaGroup(chatId: BotChatId, media: BotMediaItem[]): Promise<void> {
+    if (media.length === 1) {
+      const item = media[0];
+      await this.bot.telegram.sendPhoto(chatId, item.media, {
+        caption: item.caption,
+        parse_mode: item.parseMode,
+      });
+      return;
+    }
+
     const mediaGroup: InputMediaPhoto[] = media.map((item) => {
       const entry: InputMediaPhoto = {
         type: 'photo',
