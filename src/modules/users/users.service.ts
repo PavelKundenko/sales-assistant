@@ -18,30 +18,43 @@ export class UsersService {
     });
   }
 
-  async createOrGet(telegramId: string): Promise<[UserEntity, created: boolean]> {
+  async createOrGet(telegramId: string, telegramUsername?: string | null): Promise<[UserEntity, created: boolean]> {
     const existing = await this.findByTelegramId(telegramId);
 
     if (existing) {
+      let shouldSave = false;
+      let created = false;
+
       if (existing.status === UserStatus.INACTIVE) {
         existing.status = UserStatus.ACTIVE;
         existing.deactivatedAt = null;
 
-        const saved = await this.repository.save(existing);
-
-        return [saved, true];
+        created = true;
+        shouldSave = true;
       }
 
       if (!existing.preferences) {
         existing.preferences = new UserPreferencesEntity();
-
-        await this.repository.save(existing);
+        shouldSave = true;
       }
 
-      return [existing, false];
+      if (telegramUsername && existing.telegramUsername !== telegramUsername) {
+        existing.telegramUsername = telegramUsername;
+        shouldSave = true;
+      }
+
+      if (shouldSave) {
+        const saved = await this.repository.save(existing);
+
+        return [saved, created];
+      }
+
+      return [existing, created];
     }
 
     const entity = this.repository.create({
       telegramId,
+      telegramUsername: telegramUsername ?? null,
       status: UserStatus.ACTIVE,
       preferences: new UserPreferencesEntity(),
     });
@@ -57,6 +70,10 @@ export class UsersService {
 
   async setSteamId(userId: string, steamId: string): Promise<void> {
     await this.repository.update({ id: userId }, { steamId });
+  }
+
+  async updateTelegramUsername(userId: string, telegramUsername: string): Promise<void> {
+    await this.repository.update({ id: userId }, { telegramUsername });
   }
 
   async getUsersWithSteamId(): Promise<UserEntity[]> {

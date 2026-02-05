@@ -20,6 +20,9 @@ export class UserEntity {
   @Column({ name: 'telegram_id', type: 'bigint' })
   telegramId!: string;
 
+  @Column({ name: 'telegram_username', type: 'varchar', nullable: true })
+  telegramUsername?: string | null;
+
   @Column({ name: 'steam_id', type: 'varchar', nullable: true })
   steamId?: string | null;
 

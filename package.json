@@ -23,6 +23,7 @@
     "migration:run": "ts-node -r tsconfig-paths/register src/migrations/run-migrations.ts",
     "migration:run:prod": "node dist/src/migrations/run-migrations.js",
     "migration:revert": "ts-node -r tsconfig-paths/register src/migrations/revert-migration.ts",
+    "backfill:telegram-usernames": "ts-node -r tsconfig-paths/register src/scripts/backfill-telegram-usernames.ts",
     "prepare": "husky"
   },
   "dependencies": {

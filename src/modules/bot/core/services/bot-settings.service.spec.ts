@@ -1,0 +1,111 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { BotSettingsService } from './bot-settings.service';
+import { BOT_USERS_SERVICE, type UsersServicePort } from '../../ports/bot.ports';
+import { BotMessages } from '../../messaging/bot.messages';
+import { BotResponder } from './bot-responder.service';
+import type { BotRequest } from '../bot.types';
+import { Platform } from '../../../users/entities/user-preferences.entity';
+import type { UserEntity } from '../../../users/entities/user.entity';
+import {
+  SETTINGS_FREQUENCY_BUTTON_LABEL,
+  SETTINGS_PLATFORMS_BUTTON_LABEL,
+} from '../bot.constants';
+
+describe('BotSettingsService', () => {
+  let service: BotSettingsService;
+  let usersService: jest.Mocked<UsersServicePort>;
+  let messages: jest.Mocked<BotMessages>;
+  let responder: jest.Mocked<BotResponder>;
+
+  beforeEach(async () => {
+    usersService = {
+      updateUpdateFrequency: jest.fn(),
+      updatePlatforms: jest.fn(),
+    } as unknown as jest.Mocked<UsersServicePort>;
+
+    messages = {
+      settingsMenuMessage: jest.fn().mockReturnValue({ text: 'menu' }),
+      settingsFrequencyMessage: jest.fn().mockReturnValue({ text: 'freq' }),
+      settingsFrequencyUpdatedMessage: jest.fn().mockReturnValue({ text: 'freq-updated' }),
+      settingsFrequencyInvalidMessage: jest.fn().mockReturnValue({ text: 'freq-invalid' }),
+      settingsPlatformsMessage: jest.fn().mockReturnValue({ text: 'platforms' }),
+      settingsPlatformsSavedMessage: jest.fn().mockReturnValue({ text: 'platforms-saved' }),
+      settingsClosedMessage: jest.fn().mockReturnValue({ text: 'closed' }),
+    } as unknown as jest.Mocked<BotMessages>;
+
+    responder = {
+      sendReply: jest.fn(),
+    } as unknown as jest.Mocked<BotResponder>;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BotSettingsService,
+        { provide: BOT_USERS_SERVICE, useValue: usersService },
+        { provide: BotMessages, useValue: messages },
+        { provide: BotResponder, useValue: responder },
+      ],
+    }).compile();
+
+    service = module.get<BotSettingsService>(BotSettingsService);
+  });
+
+  it('updates frequency after selecting value', async () => {
+    const user = {
+      id: 'u1',
+      preferences: { salesUpdateFrequency: 3, wishlistUpdateFrequency: 3 },
+    } as UserEntity;
+
+    await service.openSettingsMenu(123, 111);
+
+    const menuRequest = {
+      chatId: 123,
+      telegramUserId: 111,
+      text: SETTINGS_FREQUENCY_BUTTON_LABEL,
+    } as BotRequest;
+
+    await service.handleSettingsFlow(menuRequest, { chatId: 123, user, activeSubscription: null });
+
+    const updateRequest = {
+      chatId: 123,
+      telegramUserId: 111,
+      text: '2',
+    } as BotRequest;
+
+    const handled = await service.handleSettingsFlow(updateRequest, { chatId: 123, user, activeSubscription: null });
+
+    expect(handled).toBe(true);
+    expect(usersService.updateUpdateFrequency).toHaveBeenCalledWith('u1', 2);
+    expect(user.preferences?.salesUpdateFrequency).toBe(2);
+    expect(user.preferences?.wishlistUpdateFrequency).toBe(2);
+    expect(messages.settingsFrequencyUpdatedMessage).toHaveBeenCalledWith(2);
+  });
+
+  it('toggles platforms and persists selection', async () => {
+    const user = {
+      id: 'u2',
+      preferences: { platform: [Platform.PC] },
+    } as UserEntity;
+
+    await service.openSettingsMenu(222, 333);
+
+    const menuRequest = {
+      chatId: 222,
+      telegramUserId: 333,
+      text: SETTINGS_PLATFORMS_BUTTON_LABEL,
+    } as BotRequest;
+
+    await service.handleSettingsFlow(menuRequest, { chatId: 222, user, activeSubscription: null });
+
+    const toggleRequest = {
+      chatId: 222,
+      telegramUserId: 333,
+      text: 'Mac',
+    } as BotRequest;
+
+    const handled = await service.handleSettingsFlow(toggleRequest, { chatId: 222, user, activeSubscription: null });
+
+    expect(handled).toBe(true);
+    expect(usersService.updatePlatforms).toHaveBeenCalledWith('u2', [Platform.PC, Platform.MAC]);
+    expect(user.preferences?.platform).toEqual([Platform.PC, Platform.MAC]);
+  });
+});
