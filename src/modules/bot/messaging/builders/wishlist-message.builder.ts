@@ -43,8 +43,17 @@ export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistIte
           `💰 Знижка ${game.discountPercent}%`,
           `Ціна: <s>${originalPrice}</s> ${finalPrice}`,
           platformsLine,
-          '',
         );
+
+        if (game.expiryDate) {
+          const date = game.expiryDate.toLocaleDateString('uk-UA', {
+            day: '2-digit',
+            month: '2-digit',
+          });
+          lines.push(`⏳ До: ${date}`);
+        }
+
+        lines.push('');
       } else {
         lines.push(title, `Ціна: ${finalPrice}`, platformsLine, '');
       }

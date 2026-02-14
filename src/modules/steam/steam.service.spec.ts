@@ -225,6 +225,42 @@ describe('SteamService', () => {
     expect(sales.some((sale) => sale.name === 'Capsule Game')).toBe(true);
   });
 
+  it('includes discounted games from other categories', async () => {
+    const response: SteamFeaturedCategoriesResponse = {
+      status: 1,
+      specials: {
+        id: 'specials',
+        name: 'Specials',
+        items: [
+          mockGame({
+            id: 1,
+            name: 'Specials Game',
+            discount_percent: 10,
+          }),
+        ],
+      },
+      top_sellers: {
+        id: 'top_sellers',
+        name: 'Top Sellers',
+        items: [
+          mockGame({
+            id: 2,
+            name: 'Top Seller Game',
+            discount_percent: 30,
+          }),
+        ],
+      },
+    };
+
+    gateway.fetchFeaturedCategories.mockResolvedValue(response);
+
+    const sales = await service.getCurrentSales();
+
+    expect(sales).toHaveLength(2);
+    expect(sales.some((sale) => sale.name === 'Specials Game')).toBe(true);
+    expect(sales.some((sale) => sale.name === 'Top Seller Game')).toBe(true);
+  });
+
   it('converts prices from cents to dollars', async () => {
     const response: SteamFeaturedCategoriesResponse = {
       status: 1,

@@ -46,8 +46,17 @@ export class SalesMessageBuilder extends SteamMessageBuilder<SteamSaleDto[], Bot
         `💰 Знижка ${discountPercent}`,
         `Ціна: <s>${originalPrice}</s> ${finalPrice}`,
         platformsLine,
-        '',
       );
+
+      if (game.expiryDate) {
+        const date = game.expiryDate.toLocaleDateString('uk-UA', {
+          day: '2-digit',
+          month: '2-digit',
+        });
+        captionLines.push(`⏳ До: ${date}`);
+      }
+
+      captionLines.push('');
     }
 
     const mediaGroup = salesWithImages.map(({ imageUrl }) => ({
