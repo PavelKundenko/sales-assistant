@@ -45,7 +45,11 @@ export interface SteamFeaturedCategory {
   items: SteamFeaturedItem[];
 }
 
-export interface SteamFeaturedCategoriesResponse {
+export type SpotlightCategory = {
+  [key: number]: SteamFeaturedCategory;
+};
+
+export interface SteamFeaturedCategoriesResponse extends SpotlightCategory {
   specials?: SteamFeaturedCategory;
   coming_soon?: SteamFeaturedCategory;
   top_sellers?: SteamFeaturedCategory;

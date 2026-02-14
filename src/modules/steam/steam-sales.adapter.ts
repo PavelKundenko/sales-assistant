@@ -10,29 +10,35 @@ export class SteamSalesAdapter {
     const games: SteamSaleDto[] = [];
 
     const specials = data.specials?.items || [];
+    const topSellers = data.top_sellers?.items || [];
 
-    for (const game of specials) {
-      if (game.discounted && game.discount_percent > 0) {
-        games.push(
-          new SteamSaleDto({
-            appId: game.id,
-            name: game.name,
-            originalPrice: (game.original_price || 0) / 100,
-            finalPrice: game.final_price / 100,
-            discountPercent: game.discount_percent,
-            headerImage: game.header_image,
-            storeUrl: `https://store.steampowered.com/app/${game.id}`,
-            macAvailable: game.mac_available,
+    const allGames = [...specials, ...topSellers];
+
+    const uniqueGames = allGames.filter((game, index, self) => index === self.findIndex((t) => t.id === game.id));
+    const discountedGames = uniqueGames.filter((game) => game.discounted && game.discount_percent > 0);
+
+    console.log(discountedGames.map((game) => game.name));
+
+    for (const game of discountedGames) {
+      games.push(
+        new SteamSaleDto({
+          appId: game.id,
+          name: game.name,
+          originalPrice: (game.original_price || 0) / 100,
+          finalPrice: game.final_price / 100,
+          discountPercent: game.discount_percent,
+          headerImage: game.header_image,
+          storeUrl: `https://store.steampowered.com/app/${game.id}`,
+          macAvailable: game.mac_available,
+          windowsAvailable: game.windows_available,
+          linuxAvailable: game.linux_available,
+          platforms: this.resolvePlatforms({
             windowsAvailable: game.windows_available,
+            macAvailable: game.mac_available,
             linuxAvailable: game.linux_available,
-            platforms: this.resolvePlatforms({
-              windowsAvailable: game.windows_available,
-              macAvailable: game.mac_available,
-              linuxAvailable: game.linux_available,
-            }),
           }),
-        );
-      }
+        }),
+      );
     }
 
     return this.rateSalesByAbsoluteDiscount(games);
