@@ -14,10 +14,9 @@ export class SteamSalesAdapter {
 
     const allGames = [...specials, ...topSellers];
 
-    const uniqueGames = allGames.filter((game, index, self) => index === self.findIndex((t) => t.id === game.id));
+    const gameTyped = allGames.filter((game) => game.type === 0);
+    const uniqueGames = gameTyped.filter((game, index, self) => index === self.findIndex((t) => t.id === game.id));
     const discountedGames = uniqueGames.filter((game) => game.discounted && game.discount_percent > 0);
-
-    console.log(discountedGames.map((game) => game.name));
 
     for (const game of discountedGames) {
       games.push(
@@ -37,6 +36,7 @@ export class SteamSalesAdapter {
             macAvailable: game.mac_available,
             linuxAvailable: game.linux_available,
           }),
+          expiryDate: game.discount_expiration ? new Date(game.discount_expiration * 1000) : null,
         }),
       );
     }
@@ -77,6 +77,7 @@ export class SteamSalesAdapter {
             windowsAvailable,
             linuxAvailable,
             platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
+            expiryDate: null,
           }),
         );
       }
@@ -120,6 +121,7 @@ export class SteamSalesAdapter {
             windowsAvailable,
             linuxAvailable,
             platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
+            expiryDate: null,
           }),
         );
       }
