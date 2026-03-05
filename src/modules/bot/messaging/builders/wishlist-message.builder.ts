@@ -10,13 +10,11 @@ export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistIte
       throw new Error('Wishlist collection is empty');
     }
 
-    const topItems = items.slice(0, 9);
-
-    const itemsWithImages = topItems
+    const allItemsWithImages = items
       .map((game) => ({ game, imageUrl: this.sanitizeUrl(game.headerImage) }))
       .filter((entry): entry is { game: SteamWishlistItemDto; imageUrl: string } => Boolean(entry.imageUrl));
 
-    if (itemsWithImages.length === 0) {
+    if (allItemsWithImages.length === 0) {
       throw new Error('No valid wishlist images available');
     }
 
@@ -26,7 +24,7 @@ export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistIte
       lines.push(options.intro);
     }
 
-    for (const { game } of itemsWithImages) {
+    for (const { game } of allItemsWithImages) {
       const name = this.escapeHtml(game.name ?? 'Невідома назва');
       const storeUrl = this.sanitizeUrl(game.storeUrl);
       const title = storeUrl ? `<a href="${this.escapeHtml(storeUrl)}">${name}</a>` : name;
@@ -61,7 +59,7 @@ export class WishlistMessageBuilder extends SteamMessageBuilder<SteamWishlistIte
 
     const text = lines.join('\n').trim();
 
-    const mediaGroup = itemsWithImages.map(({ imageUrl }) => ({
+    const mediaGroup = allItemsWithImages.slice(0, 10).map(({ imageUrl }) => ({
       type: 'photo' as const,
       media: imageUrl,
     }));
