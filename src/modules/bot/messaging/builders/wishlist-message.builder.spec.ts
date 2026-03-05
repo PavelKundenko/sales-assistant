@@ -110,6 +110,31 @@ describe('WishlistMessageBuilder', () => {
       expect(mediaMessage.media).toHaveLength(2);
     });
 
+    it('should cap media group at 10 but include all items in text', () => {
+      const manyItems: SteamWishlistItemDto[] = Array.from({ length: 15 }, (_, i) => ({
+        appId: 100 + i,
+        name: `Game ${i + 1}`,
+        description: `Description ${i + 1}`,
+        originalPrice: 100,
+        finalPrice: 80,
+        discountPercent: 20,
+        headerImage: `https://example.com/image${i + 1}.jpg`,
+        storeUrl: `https://store.steampowered.com/app/${100 + i}`,
+        platforms: [Platform.PC],
+      })) as SteamWishlistItemDto[];
+
+      const result = builder.build(manyItems);
+
+      const mediaMessage = expectMediaGroup(result);
+      expect(mediaMessage.media).toHaveLength(10);
+
+      const textMessage = expectTextMessage(result);
+
+      for (let i = 1; i <= 15; i++) {
+        expect(textMessage.text).toContain(`Game ${i}`);
+      }
+    });
+
     it('should correctly handle items without discounts in the text block', () => {
       const items = [
         {

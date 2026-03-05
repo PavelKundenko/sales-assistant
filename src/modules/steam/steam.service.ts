@@ -4,6 +4,9 @@ import { SteamWishlistItemDto } from './dto/steam-wishlist-item.dto';
 import { SteamGateway } from './steam.gateway';
 import { SteamSalesAdapter } from './steam-sales.adapter';
 import type { SteamPlayerResponse } from './interfaces/steam-user.interface';
+import { mapWithConcurrency } from './utils/concurrency.util';
+
+const FETCH_CONCURRENCY = 5;
 
 @Injectable()
 export class SteamService {
@@ -31,9 +34,9 @@ export class SteamService {
 
       const appIds = response.items?.map((item) => item.appid) || [];
 
-      const promises = appIds.map((appId) => this.steamGateway.fetchAppDetails(appId));
-
-      const apps = await Promise.all(promises);
+      const apps = await mapWithConcurrency(appIds, FETCH_CONCURRENCY, (appId) =>
+        this.steamGateway.fetchAppDetails(appId),
+      );
 
       return this.steamSalesAdapter.fromAppDetails(apps);
     } catch (error) {
@@ -48,9 +51,9 @@ export class SteamService {
 
       const appIds = response?.items?.map((item) => item.appid) || [];
 
-      const promises = appIds.map((appId) => this.steamGateway.fetchAppDetails(appId));
-
-      const apps = await Promise.all(promises);
+      const apps = await mapWithConcurrency(appIds, FETCH_CONCURRENCY, (appId) =>
+        this.steamGateway.fetchAppDetails(appId),
+      );
 
       return this.steamSalesAdapter.fromAppDetailsToWishlist(apps);
     } catch (error) {
