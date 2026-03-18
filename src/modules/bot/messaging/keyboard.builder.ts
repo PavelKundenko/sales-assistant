@@ -13,7 +13,7 @@ import {
   SETTINGS_DONE_BUTTON_LABEL,
 } from '../core/bot.constants';
 import type { BotKeyboard, BuildKeyboardParams } from '../core/bot.types';
-import { Platform } from '../../users/entities/user-preferences.entity';
+import { Platform } from '../../../shared/enums/platform.enum';
 
 @Injectable()
 export class KeyboardBuilder {
@@ -34,20 +34,11 @@ export class KeyboardBuilder {
   }
 
   buildSettingsMenuKeyboard(): BotKeyboard {
-    return [
-      [SETTINGS_FREQUENCY_BUTTON_LABEL],
-      [SETTINGS_PLATFORMS_BUTTON_LABEL],
-      [SETTINGS_BACK_BUTTON_LABEL],
-    ];
+    return [[SETTINGS_FREQUENCY_BUTTON_LABEL], [SETTINGS_PLATFORMS_BUTTON_LABEL], [SETTINGS_BACK_BUTTON_LABEL]];
   }
 
   buildFrequencyKeyboard(): BotKeyboard {
-    return [
-      ['1', '2', '3'],
-      ['4', '5', '6'],
-      ['7'],
-      [SETTINGS_BACK_BUTTON_LABEL],
-    ];
+    return [['1', '2', '3'], ['4', '5', '6'], ['7'], [SETTINGS_BACK_BUTTON_LABEL]];
   }
 
   buildPlatformsKeyboard(selected: Platform[]): BotKeyboard {

@@ -12,7 +12,7 @@ import {
 import { BotMessages } from '../../messaging/bot.messages';
 import { BotResponder } from './bot-responder.service';
 import type { BotRequest } from '../bot.types';
-import { Platform } from '../../../users/entities/user-preferences.entity';
+import { Platform } from '../../../../shared/enums/platform.enum';
 
 describe('BotSalesService', () => {
   let service: BotSalesService;

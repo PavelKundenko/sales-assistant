@@ -59,9 +59,7 @@ describe('BotStartService', () => {
   it('creates user and sends start message', async () => {
     const user = { id: 'u1', steamId: 'steam-id' } as any;
     usersService.createOrGet.mockResolvedValue([user, true]);
-    subscriptionsService.findActiveByUser.mockResolvedValue([
-      { type: SubscriptionType.STEAM } as any,
-    ]);
+    subscriptionsService.findActiveByUser.mockResolvedValue([{ type: SubscriptionType.STEAM } as any]);
 
     const request = { chatId: 123, telegramUserId: 456, telegramUsername: 'alice' } as BotRequest;
 

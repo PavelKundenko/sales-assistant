@@ -88,7 +88,7 @@ describe('SteamGateway', () => {
       const result = await gateway.resolveSteamUser(steamId);
 
       expect(result).toEqual(playerInfo);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       expect(httpService.get).toHaveBeenCalledWith(`${config.webApiUrl}/ISteamUser/GetPlayerSummaries/v0002/`, {
         params: {
           key: config.apiKey,
@@ -140,7 +140,7 @@ describe('SteamGateway', () => {
       const result = await gateway.fetchWishlist(steamId);
 
       expect(result).toEqual(mockWishlist);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       expect(httpService.get).toHaveBeenCalledWith(`${config.webApiUrl}/IWishlistService/GetWishlist/v1`, {
         params: { key: config.apiKey, steamid: steamId },
       });
@@ -173,7 +173,7 @@ describe('SteamGateway', () => {
       const result = await gateway.fetchAppDetails(appId);
 
       expect(result).toEqual(response);
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       expect(httpService.get).toHaveBeenCalledWith(`${config.storeUrl}/appdetails`, {
         params: { appids: appId, cc: 'UA', filters: 'basic,price_overview,platforms' },
       });

@@ -1,4 +1,4 @@
-import { Platform } from '../../users/entities/user-preferences.entity';
+import { Platform } from '../../../shared/enums/platform.enum';
 
 export interface PlatformAvailable {
   macAvailable: boolean;

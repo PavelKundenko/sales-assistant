@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { BOT_MESSENGER, type BotMessenger } from '../core/bot.types';
 import {
   BOT_STEAM_SERVICE,
   BOT_USERS_SERVICE,
@@ -8,12 +7,19 @@ import {
   type SteamServicePort,
   type UsersServicePort,
   type WishlistMessageBuilderPort,
-} from 'src/modules/bot/ports/bot.ports';
-import { shouldSendUpdate } from '../../steam/utils/platform-filter.util';
+} from '../ports/bot.ports';
+import { DigestJobRunner, type DigestConfig } from './digest-job.runner';
 
 @Injectable()
 export class WishlistDigestJob {
   private readonly logger = new Logger(WishlistDigestJob.name);
+
+  private readonly digestConfig: DigestConfig = {
+    jobName: 'wishlist digest',
+    getLastReceivedAt: (prefs) => prefs.wishlistUpdateReceivedAt,
+    getFrequency: (prefs) => prefs.wishlistUpdateFrequency,
+    markSent: (service, userId) => service.updateWishlistReceivedAt(userId),
+  };
 
   constructor(
     @Inject(BOT_USERS_SERVICE)
@@ -22,8 +28,7 @@ export class WishlistDigestJob {
     private readonly steamService: SteamServicePort,
     @Inject(BOT_WISHLIST_MESSAGE_BUILDER)
     private readonly wishlistMessageBuilder: WishlistMessageBuilderPort,
-    @Inject(BOT_MESSENGER)
-    private readonly messenger: BotMessenger,
+    private readonly digestRunner: DigestJobRunner,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_7PM)
@@ -32,41 +37,29 @@ export class WishlistDigestJob {
 
     const usersWithSteamId = await this.usersService.getUsersWithSteamId();
 
-    for (const user of usersWithSteamId) {
-      try {
-        const preferences = user.preferences;
+    const recipients = usersWithSteamId.map((user) => ({
+      user,
+      telegramId: user.telegramId,
+    }));
 
-        if (!preferences) {
-          this.logger.warn(`User ${user.id} has no preferences, skipping`);
-          continue;
-        }
-
-        const shouldSend = shouldSendUpdate(preferences.wishlistUpdateReceivedAt, preferences.wishlistUpdateFrequency);
-
-        if (!shouldSend) {
-          this.logger.debug(`Skipping wishlist digest for user ${user.id} - frequency not met`);
-          continue;
-        }
-
+    await this.digestRunner.processRecipients(
+      recipients,
+      this.digestConfig,
+      async (user) => {
         const wishlistItems = await this.steamService.getWishlistItems(user.steamId!);
-
         const wishlistItemsOnSale = wishlistItems.filter((item) => !!item.discountPercent && item.discountPercent > 0);
 
         if (wishlistItemsOnSale.length === 0) {
-          continue;
+          return null;
         }
 
-        const messageSequence = this.wishlistMessageBuilder.build(wishlistItemsOnSale, {
-          intro: 'Ігри з вашого списку бажаного Steam на знижці: \n',
-        });
-
-        await this.messenger.sendMessageSequence(user.telegramId, messageSequence);
-        await this.usersService.updateWishlistReceivedAt(user.id);
-
-        this.logger.log(`Sent wishlist digest to user ${user.id}`);
-      } catch (error) {
-        this.logger.error(`Failed to fetch Steam wishlist for ${user.steamId}`, error);
-      }
-    }
+        return {
+          messageSequence: this.wishlistMessageBuilder.build(wishlistItemsOnSale, {
+            intro: 'Ігри з вашого списку бажаного Steam на знижці: \n',
+          }),
+        };
+      },
+      this.logger,
+    );
   }
 }

@@ -1,27 +1,29 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BotSettingsService } from './bot-settings.service';
-import { BOT_USERS_SERVICE, type UsersServicePort } from '../../ports/bot.ports';
+import { BOT_USER_PREFERENCES_SERVICE, type UserPreferencesServicePort } from '../../ports/bot.ports';
 import { BotMessages } from '../../messaging/bot.messages';
 import { BotResponder } from './bot-responder.service';
 import type { BotRequest } from '../bot.types';
-import { Platform } from '../../../users/entities/user-preferences.entity';
+import { Platform } from '../../../../shared/enums/platform.enum';
 import type { UserEntity } from '../../../users/entities/user.entity';
-import {
-  SETTINGS_FREQUENCY_BUTTON_LABEL,
-  SETTINGS_PLATFORMS_BUTTON_LABEL,
-} from '../bot.constants';
+import { SETTINGS_FREQUENCY_BUTTON_LABEL, SETTINGS_PLATFORMS_BUTTON_LABEL } from '../bot.constants';
+import { MenuStepHandler } from './settings/menu-step.handler';
+import { FrequencyStepHandler } from './settings/frequency-step.handler';
+import { PlatformsStepHandler } from './settings/platforms-step.handler';
 
 describe('BotSettingsService', () => {
   let service: BotSettingsService;
-  let usersService: jest.Mocked<UsersServicePort>;
+  let userPreferencesService: jest.Mocked<UserPreferencesServicePort>;
   let messages: jest.Mocked<BotMessages>;
   let responder: jest.Mocked<BotResponder>;
 
   beforeEach(async () => {
-    usersService = {
+    userPreferencesService = {
       updateUpdateFrequency: jest.fn(),
       updatePlatforms: jest.fn(),
-    } as unknown as jest.Mocked<UsersServicePort>;
+      updateSalesReceivedAt: jest.fn(),
+      updateWishlistReceivedAt: jest.fn(),
+    } as unknown as jest.Mocked<UserPreferencesServicePort>;
 
     messages = {
       settingsMenuMessage: jest.fn().mockReturnValue({ text: 'menu' }),
@@ -40,7 +42,10 @@ describe('BotSettingsService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BotSettingsService,
-        { provide: BOT_USERS_SERVICE, useValue: usersService },
+        MenuStepHandler,
+        FrequencyStepHandler,
+        PlatformsStepHandler,
+        { provide: BOT_USER_PREFERENCES_SERVICE, useValue: userPreferencesService },
         { provide: BotMessages, useValue: messages },
         { provide: BotResponder, useValue: responder },
       ],
@@ -74,7 +79,7 @@ describe('BotSettingsService', () => {
     const handled = await service.handleSettingsFlow(updateRequest, { chatId: 123, user, activeSubscription: null });
 
     expect(handled).toBe(true);
-    expect(usersService.updateUpdateFrequency).toHaveBeenCalledWith('u1', 2);
+    expect(userPreferencesService.updateUpdateFrequency).toHaveBeenCalledWith('u1', 2);
     expect(user.preferences?.salesUpdateFrequency).toBe(2);
     expect(user.preferences?.wishlistUpdateFrequency).toBe(2);
     expect(messages.settingsFrequencyUpdatedMessage).toHaveBeenCalledWith(2);
@@ -105,7 +110,7 @@ describe('BotSettingsService', () => {
     const handled = await service.handleSettingsFlow(toggleRequest, { chatId: 222, user, activeSubscription: null });
 
     expect(handled).toBe(true);
-    expect(usersService.updatePlatforms).toHaveBeenCalledWith('u2', [Platform.PC, Platform.MAC]);
+    expect(userPreferencesService.updatePlatforms).toHaveBeenCalledWith('u2', [Platform.PC, Platform.MAC]);
     expect(user.preferences?.platform).toEqual([Platform.PC, Platform.MAC]);
   });
 });

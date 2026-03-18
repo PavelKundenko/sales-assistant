@@ -7,6 +7,12 @@ import type { BotRequest } from '../bot.types';
 import type { SubscriptionEntity } from '../../../subscriptions/entities/subscription.entity';
 import type { UserEntity } from '../../../users/entities/user.entity';
 
+export type GuardedContext = {
+  chatId: NonNullable<BotRequest['chatId']>;
+  user: UserEntity;
+  activeSubscription: SubscriptionEntity | null;
+};
+
 @Injectable()
 export class BotRequestGuard {
   constructor(
@@ -17,11 +23,7 @@ export class BotRequestGuard {
     private readonly responder: BotResponder,
   ) {}
 
-  async requireContext(request: BotRequest): Promise<{
-    chatId: NonNullable<BotRequest['chatId']>;
-    user: UserEntity;
-    activeSubscription: SubscriptionEntity | null;
-  } | null> {
+  async requireContext(request: BotRequest): Promise<GuardedContext | null> {
     const chatId = request.chatId;
 
     if (!chatId) {

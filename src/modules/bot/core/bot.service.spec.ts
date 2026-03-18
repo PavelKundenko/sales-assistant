@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { Logger } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BotService } from './bot.service';
@@ -132,42 +131,30 @@ describe('BotService', () => {
   const mockRequest: BotRequest = { chatId: 123, telegramUserId: 123, telegramUsername: 'alice', text: '/start' };
 
   describe('handleStart', () => {
-    it('should create user and send start message', async () => {
+    it('should clear session and delegate to startService', async () => {
       await service.handleStart(mockRequest);
 
       expect(settingsService.clearSession).toHaveBeenCalledWith(123);
       expect(startService.handleStart).toHaveBeenCalledWith(mockRequest);
     });
 
-    it('should return early if telegramUserId is missing', async () => {
+    it('should handle missing telegramUserId', async () => {
       await service.handleStart({ ...mockRequest, telegramUserId: null });
       expect(startService.handleStart).toHaveBeenCalledWith({ ...mockRequest, telegramUserId: null });
     });
   });
 
   describe('handleSalesCommand', () => {
-    it('should send sales media group', async () => {
+    it('should clear session and delegate to salesService', async () => {
       await service.handleSalesCommand(mockRequest);
 
       expect(settingsService.clearSession).toHaveBeenCalledWith(123);
       expect(salesService.handleSalesCommand).toHaveBeenCalledWith(mockRequest);
     });
-
-    it('should handle empty sales', async () => {
-      await service.handleSalesCommand(mockRequest);
-
-      expect(salesService.handleSalesCommand).toHaveBeenCalledWith(mockRequest);
-    });
-
-    it('should handle errors', async () => {
-      await service.handleSalesCommand(mockRequest);
-
-      expect(salesService.handleSalesCommand).toHaveBeenCalledWith(mockRequest);
-    });
   });
 
   describe('handleHelp', () => {
-    it('should send help message', async () => {
+    it('should clear session and delegate to helpService', async () => {
       await service.handleHelp(mockRequest);
 
       expect(settingsService.clearSession).toHaveBeenCalledWith(123);
@@ -176,7 +163,7 @@ describe('BotService', () => {
   });
 
   describe('handleSettingsCommand', () => {
-    it('should send settings menu message', async () => {
+    it('should require context and open settings menu', async () => {
       await service.handleSettingsCommand(mockRequest);
 
       expect(requestGuard.requireContext).toHaveBeenCalledWith(mockRequest);
@@ -184,52 +171,44 @@ describe('BotService', () => {
     });
   });
 
-  describe('handleSubscribe', () => {
-    it('should create subscription and confirm', async () => {
-      await service.handleSubscribe(123, mockUser, null);
+  describe('handleSubscribeCommand', () => {
+    it('should clear session, require context, and subscribe', async () => {
+      await service.handleSubscribeCommand(mockRequest);
 
+      expect(settingsService.clearSession).toHaveBeenCalledWith(123);
       expect(subscriptionService.subscribe).toHaveBeenCalledWith(123, mockUser, null);
     });
 
-    it('should not create subscription if already active', async () => {
-      await service.handleSubscribe(123, mockUser, {} as any);
+    it('should return early if context is null', async () => {
+      requestGuard.requireContext.mockResolvedValue(null);
+      await service.handleSubscribeCommand(mockRequest);
 
-      expect(subscriptionService.subscribe).toHaveBeenCalledWith(123, mockUser, {} as any);
+      expect(subscriptionService.subscribe).not.toHaveBeenCalled();
     });
   });
 
-  describe('handleUnsubscribe', () => {
-    it('should deactivate subscription and confirm', async () => {
-      await service.handleUnsubscribe(123, { id: 's1' } as any, true);
+  describe('handleUnsubscribeCommand', () => {
+    it('should clear session, require context, and unsubscribe', async () => {
+      await service.handleUnsubscribeCommand(mockRequest);
 
-      expect(subscriptionService.unsubscribe).toHaveBeenCalledWith(123, { id: 's1' } as any, true);
+      expect(settingsService.clearSession).toHaveBeenCalledWith(123);
+      expect(subscriptionService.unsubscribe).toHaveBeenCalledWith(123, null, true);
     });
   });
 
   describe('handlePostCommand', () => {
-    it('should send broadcast message to all active users', async () => {
+    it('should clear session and delegate to adminService', async () => {
       await service.handlePostCommand({ chatId: 123, text: '/post Hello World' } as BotRequest);
 
       expect(adminService.handlePostCommand).toHaveBeenCalledWith({ chatId: 123, text: '/post Hello World' });
     });
-
-    it('should ignore if not admin', async () => {
-      await service.handlePostCommand({ chatId: 999, text: '/post Hello' } as BotRequest);
-
-      expect(adminService.handlePostCommand).toHaveBeenCalledWith({ chatId: 999, text: '/post Hello' });
-    });
-
-    it('should prompt for message if empty', async () => {
-      await service.handlePostCommand({ chatId: 123, text: '/post   ' } as BotRequest);
-
-      expect(adminService.handlePostCommand).toHaveBeenCalledWith({ chatId: 123, text: '/post   ' });
-    });
   });
 
   describe('handleWishlistCommand', () => {
-    it('should send wishlist media group', async () => {
+    it('should clear session, require context, and delegate to wishlistService', async () => {
       await service.handleWishlistCommand(mockRequest);
 
+      expect(settingsService.clearSession).toHaveBeenCalledWith(123);
       expect(requestGuard.requireContext).toHaveBeenCalledWith(mockRequest);
       expect(wishlistService.handleWishlistCommand).toHaveBeenCalledWith({
         chatId: 123,
@@ -237,39 +216,16 @@ describe('BotService', () => {
         activeSubscription: null,
       });
     });
-
-    it('should handle empty wishlist', async () => {
-      await service.handleWishlistCommand(mockRequest);
-
-      expect(wishlistService.handleWishlistCommand).toHaveBeenCalled();
-    });
-
-    it('should handle wishlist error', async () => {
-      await service.handleWishlistCommand(mockRequest);
-
-      expect(wishlistService.handleWishlistCommand).toHaveBeenCalled();
-    });
   });
 
-  describe('handleSteamIdSetup', () => {
-    it('should resolve and set Steam ID', async () => {
-      await service.handleSteamIdSetup(123, mockUser, 'new-steam-id', false);
+  describe('handleTextCommand', () => {
+    it('should send unknown text message when no handler matches', async () => {
+      settingsService.handleSettingsFlow.mockResolvedValue(false);
+      wishlistService.tryHandleSteamIdFromText.mockResolvedValue(false);
 
-      expect(wishlistService.handleSteamIdSetup).toHaveBeenCalledWith(123, mockUser, 'new-steam-id', false);
-    });
+      await service.handleTextCommand({ ...mockRequest, text: 'random text' });
 
-    it('should handle steam resolution error', async () => {
-      await service.handleSteamIdSetup(123, mockUser, 'invalid-id', false);
-
-      expect(wishlistService.handleSteamIdSetup).toHaveBeenCalledWith(123, mockUser, 'invalid-id', false);
-    });
-  });
-
-  describe('Helper send methods', () => {
-    it('sendUnknownText should send unknown msg', async () => {
-      messages.unknownTextMessage.mockReturnValue({ text: 'Unknown' });
-      await service.sendUnknownText(123, true, true);
-      expect(responder.sendReply).toHaveBeenCalledWith(123, { text: 'Unknown' });
+      expect(responder.sendReply).toHaveBeenCalledWith(123, { text: 'unknown' });
     });
   });
 

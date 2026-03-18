@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { SalesMessageBuilder } from './sales-message.builder';
 import { SteamSaleDto } from '../../../steam/dto/steam-sale.dto';
-import { Platform } from '../../../users/entities/user-preferences.entity';
+import { Platform } from '../../../../shared/enums/platform.enum';
 
 describe('SalesMessageBuilder', () => {
   let builder: SalesMessageBuilder;
