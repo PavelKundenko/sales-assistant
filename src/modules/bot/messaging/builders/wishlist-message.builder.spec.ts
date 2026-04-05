@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { WishlistMessageBuilder } from './wishlist-message.builder';
 import { SteamWishlistItemDto } from '../../../steam/dto/steam-wishlist-item.dto';
-import { Platform } from '../../../users/entities/user-preferences.entity';
+import { Platform } from '../../../../shared/enums/platform.enum';
 
 describe('WishlistMessageBuilder', () => {
   let builder: WishlistMessageBuilder;

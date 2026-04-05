@@ -25,18 +25,24 @@ import { BotSubscriptionService } from './services/bot-subscription.service';
 import { BotAdminService } from './services/bot-admin.service';
 import { BotStartService } from './services/bot-start.service';
 import { BotHelpService } from './services/bot-help.service';
+import { MenuStepHandler } from './services/settings/menu-step.handler';
+import { FrequencyStepHandler } from './services/settings/frequency-step.handler';
+import { PlatformsStepHandler } from './services/settings/platforms-step.handler';
 import {
   BOT_KEYBOARD_BUILDER,
   BOT_SALES_MESSAGE_BUILDER,
   BOT_STEAM_SERVICE,
   BOT_SUBSCRIPTIONS_SERVICE,
+  BOT_USER_PREFERENCES_SERVICE,
   BOT_USERS_SERVICE,
   BOT_WISHLIST_MESSAGE_BUILDER,
 } from '../ports/bot.ports';
 import { SteamService } from '../../steam/steam.service';
 import { UsersService } from '../../users/users.service';
+import { UserPreferencesService } from '../../users/user-preferences.service';
 import { SubscriptionsService } from '../../subscriptions/subscriptions.service';
 import { WishlistDigestJob } from '../jobs/wishlist-digest.job';
+import { DigestJobRunner } from '../jobs/digest-job.runner';
 
 @Module({
   imports: [
@@ -57,6 +63,9 @@ import { WishlistDigestJob } from '../jobs/wishlist-digest.job';
     BotResponder,
     BotRequestGuard,
     BotSettingsService,
+    MenuStepHandler,
+    FrequencyStepHandler,
+    PlatformsStepHandler,
     BotSalesService,
     BotWishlistService,
     BotSubscriptionService,
@@ -67,12 +76,14 @@ import { WishlistDigestJob } from '../jobs/wishlist-digest.job';
     WishlistMessageBuilder,
     SalesDigestJob,
     WishlistDigestJob,
+    DigestJobRunner,
     KeyboardBuilder,
     BotMessages,
     BotContextService,
     BotTextRouter,
     { provide: BOT_STEAM_SERVICE, useExisting: SteamService },
     { provide: BOT_USERS_SERVICE, useExisting: UsersService },
+    { provide: BOT_USER_PREFERENCES_SERVICE, useExisting: UserPreferencesService },
     { provide: BOT_SUBSCRIPTIONS_SERVICE, useExisting: SubscriptionsService },
     { provide: BOT_SALES_MESSAGE_BUILDER, useExisting: SalesMessageBuilder },
     { provide: BOT_WISHLIST_MESSAGE_BUILDER, useExisting: WishlistMessageBuilder },

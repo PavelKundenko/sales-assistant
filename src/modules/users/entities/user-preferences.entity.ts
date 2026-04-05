@@ -1,11 +1,8 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { UserEntity } from './user.entity';
+import { Platform } from '../../../shared/enums/platform.enum';
 
-export enum Platform {
-  PC = 'PC',
-  MAC = 'MAC',
-  STEAM_DECK = 'STEAM_DECK',
-}
+export { Platform };
 
 @Entity('user_preferences')
 export class UserPreferencesEntity {

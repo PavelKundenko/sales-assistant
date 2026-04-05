@@ -4,10 +4,11 @@ import type { SteamPlayerResponse } from '../../steam/interfaces/steam-user.inte
 import type { SubscriptionEntity, SubscriptionType } from '../../subscriptions/entities/subscription.entity';
 import type { UserEntity } from '../../users/entities/user.entity';
 import type { BotKeyboard, BotMessageSequence, BuildKeyboardParams } from '../core/bot.types';
-import type { Platform } from '../../users/entities/user-preferences.entity';
+import type { Platform } from '../../../shared/enums/platform.enum';
 
 export const BOT_STEAM_SERVICE = Symbol('BOT_STEAM_SERVICE');
 export const BOT_USERS_SERVICE = Symbol('BOT_USERS_SERVICE');
+export const BOT_USER_PREFERENCES_SERVICE = Symbol('BOT_USER_PREFERENCES_SERVICE');
 export const BOT_SUBSCRIPTIONS_SERVICE = Symbol('BOT_SUBSCRIPTIONS_SERVICE');
 export const BOT_SALES_MESSAGE_BUILDER = Symbol('BOT_SALES_MESSAGE_BUILDER');
 export const BOT_WISHLIST_MESSAGE_BUILDER = Symbol('BOT_WISHLIST_MESSAGE_BUILDER');
@@ -36,6 +37,9 @@ export interface UsersServicePort {
   updateTelegramUsername(userId: string, telegramUsername: string): Promise<void>;
   getUsersWithSteamId(): Promise<UserEntity[]>;
   findAllActive(): Promise<UserEntity[]>;
+}
+
+export interface UserPreferencesServicePort {
   updateSalesReceivedAt(userId: string): Promise<void>;
   updateWishlistReceivedAt(userId: string): Promise<void>;
   updateUpdateFrequency(userId: string, frequency: number): Promise<void>;

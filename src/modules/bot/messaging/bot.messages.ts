@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { BotMessageOptions } from '../core/bot.types';
 import { BOT_KEYBOARD_BUILDER, type KeyboardBuilderPort } from '../ports/bot.ports';
-import { Platform } from '../../users/entities/user-preferences.entity';
+import { Platform } from '../../../shared/enums/platform.enum';
 
 export type BotReply = {
   text: string;

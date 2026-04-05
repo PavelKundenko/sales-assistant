@@ -11,68 +11,38 @@ import {
 import type { BotRequest } from '../core/bot.types';
 import { BotService } from '../core/bot.service';
 
+type RouteHandler = (request: BotRequest) => Promise<void>;
+
 @Injectable()
 export class BotTextRouter {
-  constructor(private readonly botService: BotService) {}
+  private readonly routes: ReadonlyMap<string, RouteHandler>;
+
+  constructor(private readonly botService: BotService) {
+    this.routes = new Map<string, RouteHandler>([
+      [START_BUTTON_LABEL, (req) => this.botService.handleStart(req)],
+      [SETTINGS_BUTTON_LABEL, (req) => this.botService.handleSettingsCommand(req)],
+      [SALES_BUTTON_LABEL, (req) => this.botService.handleSalesCommand(req)],
+      [SUBSCRIBE_BUTTON_LABEL, (req) => this.botService.handleSubscribeCommand(req)],
+      [UNSUBSCRIBE_BUTTON_LABEL, (req) => this.botService.handleUnsubscribeCommand(req)],
+      [WISHLIST_BUTTON_LABEL, (req) => this.botService.handleWishlistCommand(req)],
+      [CONNECT_WISHLIST_BUTTON_LABEL, (req) => this.botService.handleConnectWishlistCommand(req)],
+    ]);
+  }
 
   async handleText(request: BotRequest): Promise<void> {
-    if (!request.text) {
+    if (!request.text || !request.chatId) {
       return;
     }
 
-    const chatId = request.chatId;
+    const handler = this.routes.get(request.text);
 
-    if (!chatId) {
+    if (handler) {
+      await handler(request);
       return;
     }
 
-    const text = request.text;
-
-    if (text === START_BUTTON_LABEL) {
-      await this.botService.handleStart(request);
-
-      return;
-    }
-
-    if (text === SETTINGS_BUTTON_LABEL) {
-      await this.botService.handleSettingsCommand(request);
-
-      return;
-    }
-
-    if (text === SALES_BUTTON_LABEL) {
-      await this.botService.handleSalesCommand(request);
-
-      return;
-    }
-
-    if (text === SUBSCRIBE_BUTTON_LABEL) {
-      await this.botService.handleSubscribeCommand(request);
-
-      return;
-    }
-
-    if (text === UNSUBSCRIBE_BUTTON_LABEL) {
-      await this.botService.handleUnsubscribeCommand(request);
-
-      return;
-    }
-
-    if (text === WISHLIST_BUTTON_LABEL) {
-      await this.botService.handleWishlistCommand(request);
-
-      return;
-    }
-
-    if (text === CONNECT_WISHLIST_BUTTON_LABEL) {
-      await this.botService.handleConnectWishlistCommand(request);
-
-      return;
-    }
-
-    if (text.startsWith('/post')) {
+    if (request.text.startsWith('/post')) {
       await this.botService.handlePostCommand(request);
-
       return;
     }
 

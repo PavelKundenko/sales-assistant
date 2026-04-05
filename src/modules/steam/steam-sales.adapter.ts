@@ -1,8 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { SteamAppDetailsResponse, SteamFeaturedCategoriesResponse } from './interfaces/steam-game.interface';
+import {
+  SteamAppDetailsData,
+  SteamAppDetailsResponse,
+  SteamFeaturedCategoriesResponse,
+} from './interfaces/steam-game.interface';
 import { SteamSaleDto } from './dto/steam-sale.dto';
 import { SteamWishlistItemDto } from './dto/steam-wishlist-item.dto';
-import { Platform } from '../users/entities/user-preferences.entity';
+import { Platform } from '../../shared/enums/platform.enum';
+
+type AppDetailsBase = {
+  appId: number;
+  name: string;
+  headerImage: string;
+  storeUrl: string;
+  windowsAvailable: boolean;
+  macAvailable: boolean;
+  linuxAvailable: boolean;
+  platforms: Platform[];
+  price: SteamAppDetailsData['price_overview'];
+  description: string;
+};
 
 @Injectable()
 export class SteamSalesAdapter {
@@ -47,40 +64,26 @@ export class SteamSalesAdapter {
   fromAppDetails(data: SteamAppDetailsResponse[]): SteamSaleDto[] {
     const games: SteamSaleDto[] = [];
 
-    for (const response of data) {
-      for (const [appId, entry] of Object.entries(response)) {
-        if (!entry?.success || !entry.data) {
-          continue;
-        }
+    for (const base of this.extractAppDetails(data)) {
+      const originalPrice = base.price?.initial ? base.price.initial / 100 : 0;
+      const finalPrice = base.price?.final ? base.price.final / 100 : originalPrice;
 
-        const details = entry.data;
-        const price = details.price_overview;
-        const parsedAppId = Number(details.steam_appid ?? appId);
-        const originalPrice = price?.initial ? price.initial / 100 : 0;
-        const finalPrice = price?.final ? price.final / 100 : originalPrice;
-        const resolvedAppId = Number.isNaN(parsedAppId) ? 0 : parsedAppId;
-        const headerImage = details.header_image ?? (resolvedAppId ? this.buildHeaderImageUrl(resolvedAppId) : '');
-        const windowsAvailable = details.platforms?.windows ?? false;
-        const macAvailable = details.platforms?.mac ?? false;
-        const linuxAvailable = details.platforms?.linux ?? false;
-
-        games.push(
-          new SteamSaleDto({
-            appId: resolvedAppId,
-            name: details.name ?? `App ${appId}`,
-            originalPrice,
-            finalPrice,
-            discountPercent: price?.discount_percent ?? 0,
-            headerImage,
-            storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
-            macAvailable,
-            windowsAvailable,
-            linuxAvailable,
-            platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
-            expiryDate: null,
-          }),
-        );
-      }
+      games.push(
+        new SteamSaleDto({
+          appId: base.appId,
+          name: base.name,
+          originalPrice,
+          finalPrice,
+          discountPercent: base.price?.discount_percent ?? 0,
+          headerImage: base.headerImage,
+          storeUrl: base.storeUrl,
+          macAvailable: base.macAvailable,
+          windowsAvailable: base.windowsAvailable,
+          linuxAvailable: base.linuxAvailable,
+          platforms: base.platforms,
+          expiryDate: null,
+        }),
+      );
     }
 
     return this.rateSalesByAbsoluteDiscount(games);
@@ -89,6 +92,33 @@ export class SteamSalesAdapter {
   fromAppDetailsToWishlist(data: SteamAppDetailsResponse[]): SteamWishlistItemDto[] {
     const games: SteamWishlistItemDto[] = [];
 
+    for (const base of this.extractAppDetails(data)) {
+      const originalPrice = base.price?.initial ? base.price.initial / 100 : null;
+      const finalPrice = base.price?.final ? base.price.final / 100 : originalPrice;
+
+      games.push(
+        new SteamWishlistItemDto({
+          appId: base.appId,
+          name: base.name,
+          description: base.description,
+          originalPrice,
+          finalPrice,
+          discountPercent: base.price?.discount_percent ?? null,
+          headerImage: base.headerImage,
+          storeUrl: base.storeUrl,
+          macAvailable: base.macAvailable,
+          windowsAvailable: base.windowsAvailable,
+          linuxAvailable: base.linuxAvailable,
+          platforms: base.platforms,
+          expiryDate: null,
+        }),
+      );
+    }
+
+    return games;
+  }
+
+  private *extractAppDetails(data: SteamAppDetailsResponse[]): Iterable<AppDetailsBase> {
     for (const response of data) {
       for (const [appId, entry] of Object.entries(response)) {
         if (!entry?.success || !entry.data) {
@@ -99,35 +129,24 @@ export class SteamSalesAdapter {
         const parsedAppId = Number(details.steam_appid ?? appId);
         const resolvedAppId = Number.isNaN(parsedAppId) ? 0 : parsedAppId;
         const headerImage = details.header_image ?? (resolvedAppId ? this.buildHeaderImageUrl(resolvedAppId) : '');
-        const price = details.price_overview;
-        const originalPrice = price?.initial ? price.initial / 100 : null;
-        const finalPrice = price?.final ? price.final / 100 : originalPrice;
-        const discountPercent = price?.discount_percent ?? null;
         const windowsAvailable = details.platforms?.windows ?? false;
         const macAvailable = details.platforms?.mac ?? false;
         const linuxAvailable = details.platforms?.linux ?? false;
 
-        games.push(
-          new SteamWishlistItemDto({
-            appId: resolvedAppId,
-            name: details.name ?? `App ${appId}`,
-            description: details.short_description ?? '',
-            originalPrice,
-            finalPrice,
-            discountPercent,
-            headerImage,
-            storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
-            macAvailable,
-            windowsAvailable,
-            linuxAvailable,
-            platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
-            expiryDate: null,
-          }),
-        );
+        yield {
+          appId: resolvedAppId,
+          name: details.name ?? `App ${appId}`,
+          headerImage,
+          storeUrl: `https://store.steampowered.com/app/${details.steam_appid ?? appId}`,
+          windowsAvailable,
+          macAvailable,
+          linuxAvailable,
+          platforms: this.resolvePlatforms({ windowsAvailable, macAvailable, linuxAvailable }),
+          price: details.price_overview,
+          description: details.short_description ?? '',
+        };
       }
     }
-
-    return games;
   }
 
   private buildHeaderImageUrl(appId: number): string {

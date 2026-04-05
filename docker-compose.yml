@@ -1,0 +1,6 @@
+services:
+  sales-assistant:
+    build: .
+    container_name: sales-assistant
+    restart: unless-stopped
+    env_file: .env

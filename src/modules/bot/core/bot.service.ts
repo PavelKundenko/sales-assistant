@@ -8,10 +8,8 @@ import { BotSubscriptionService } from './services/bot-subscription.service';
 import { BotAdminService } from './services/bot-admin.service';
 import { BotStartService } from './services/bot-start.service';
 import { BotHelpService } from './services/bot-help.service';
-import { BotRequestGuard } from './services/bot-request.guard';
+import { BotRequestGuard, type GuardedContext } from './services/bot-request.guard';
 import { BotMessages } from '../messaging/bot.messages';
-import type { SubscriptionEntity } from '../../subscriptions/entities/subscription.entity';
-import type { UserEntity } from '../../users/entities/user.entity';
 
 @Injectable()
 export class BotService implements OnApplicationBootstrap {
@@ -55,30 +53,31 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleSubscribeCommand(request: BotRequest): Promise<void> {
-    this.settingsService.clearSession(request.telegramUserId);
-    const context = await this.requestGuard.requireContext(request);
+    const context = await this.requireGuardedContext(request);
 
     if (!context) {
       return;
     }
 
-    await this.handleSubscribe(context.chatId, context.user, context.activeSubscription);
+    await this.subscriptionService.subscribe(context.chatId, context.user, context.activeSubscription);
   }
 
   async handleUnsubscribeCommand(request: BotRequest): Promise<void> {
-    this.settingsService.clearSession(request.telegramUserId);
-    const context = await this.requestGuard.requireContext(request);
+    const context = await this.requireGuardedContext(request);
 
     if (!context) {
       return;
     }
 
-    await this.handleUnsubscribe(context.chatId, context.activeSubscription, Boolean(context.user.steamId));
+    await this.subscriptionService.unsubscribe(
+      context.chatId,
+      context.activeSubscription,
+      Boolean(context.user.steamId),
+    );
   }
 
   async handleWishlistCommand(request: BotRequest): Promise<void> {
-    this.settingsService.clearSession(request.telegramUserId);
-    const context = await this.requestGuard.requireContext(request);
+    const context = await this.requireGuardedContext(request);
 
     if (!context) {
       return;
@@ -88,8 +87,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleConnectWishlistCommand(request: BotRequest): Promise<void> {
-    this.settingsService.clearSession(request.telegramUserId);
-    const context = await this.requestGuard.requireContext(request);
+    const context = await this.requireGuardedContext(request);
 
     if (!context) {
       return;
@@ -99,8 +97,7 @@ export class BotService implements OnApplicationBootstrap {
   }
 
   async handleSetupWishlistCommand(request: BotRequest): Promise<void> {
-    this.settingsService.clearSession(request.telegramUserId);
-    const context = await this.requestGuard.requireContext(request);
+    const context = await this.requireGuardedContext(request);
 
     if (!context) {
       return;
@@ -133,7 +130,10 @@ export class BotService implements OnApplicationBootstrap {
       }
     }
 
-    await this.sendUnknownText(context.chatId, Boolean(context.activeSubscription), Boolean(context.user.steamId));
+    await this.responder.sendReply(
+      context.chatId,
+      this.messages.unknownTextMessage(Boolean(context.activeSubscription), Boolean(context.user.steamId)),
+    );
   }
 
   async handleSettingsCommand(request: BotRequest): Promise<void> {
@@ -146,36 +146,8 @@ export class BotService implements OnApplicationBootstrap {
     await this.settingsService.openSettingsMenu(context.chatId, request.telegramUserId);
   }
 
-  async handleSubscribe(
-    chatId: NonNullable<BotRequest['chatId']>,
-    user: UserEntity,
-    activeSubscription: SubscriptionEntity | null,
-  ): Promise<void> {
-    await this.subscriptionService.subscribe(chatId, user, activeSubscription);
-  }
-
-  async handleUnsubscribe(
-    chatId: NonNullable<BotRequest['chatId']>,
-    activeSubscription: SubscriptionEntity | null,
-    hasSteamId: boolean,
-  ): Promise<void> {
-    await this.subscriptionService.unsubscribe(chatId, activeSubscription, hasSteamId);
-  }
-
-  async handleSteamIdSetup(
-    chatId: NonNullable<BotRequest['chatId']>,
-    user: UserEntity,
-    steamId: string,
-    isSubscribed: boolean,
-  ): Promise<void> {
-    await this.wishlistService.handleSteamIdSetup(chatId, user, steamId, isSubscribed);
-  }
-
-  async sendUnknownText(
-    chatId: NonNullable<BotRequest['chatId']>,
-    isSubscribed: boolean,
-    hasSteamId: boolean,
-  ): Promise<void> {
-    await this.responder.sendReply(chatId, this.messages.unknownTextMessage(isSubscribed, hasSteamId));
+  private async requireGuardedContext(request: BotRequest): Promise<GuardedContext | null> {
+    this.settingsService.clearSession(request.telegramUserId);
+    return this.requestGuard.requireContext(request);
   }
 }

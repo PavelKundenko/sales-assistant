@@ -28,10 +28,7 @@ export class BotWishlistService {
     private readonly responder: BotResponder,
   ) {}
 
-  async handleWishlistCommand(context: {
-    chatId: NonNullable<BotRequest['chatId']>;
-    user: UserEntity;
-  }): Promise<void> {
+  async handleWishlistCommand(context: { chatId: NonNullable<BotRequest['chatId']>; user: UserEntity }): Promise<void> {
     if (!context.user.steamId) {
       await this.responder.sendReply(context.chatId, this.messages.steamIdGuideMessage());
 
@@ -53,7 +50,11 @@ export class BotWishlistService {
 
   async handleSetupWishlistCommand(
     request: BotRequest,
-    context: { chatId: NonNullable<BotRequest['chatId']>; user: UserEntity; activeSubscription: SubscriptionEntity | null },
+    context: {
+      chatId: NonNullable<BotRequest['chatId']>;
+      user: UserEntity;
+      activeSubscription: SubscriptionEntity | null;
+    },
   ): Promise<void> {
     const text = request.text;
     const args = text?.split(' ') ?? [];
@@ -72,17 +73,16 @@ export class BotWishlistService {
       return;
     }
 
-    await this.handleSteamIdSetup(
-      context.chatId,
-      context.user,
-      potentialSteamId,
-      Boolean(context.activeSubscription),
-    );
+    await this.handleSteamIdSetup(context.chatId, context.user, potentialSteamId, Boolean(context.activeSubscription));
   }
 
   async tryHandleSteamIdFromText(
     text: string,
-    context: { chatId: NonNullable<BotRequest['chatId']>; user: UserEntity; activeSubscription: SubscriptionEntity | null },
+    context: {
+      chatId: NonNullable<BotRequest['chatId']>;
+      user: UserEntity;
+      activeSubscription: SubscriptionEntity | null;
+    },
   ): Promise<boolean> {
     const steamId = this.parseSteamId(text);
 
